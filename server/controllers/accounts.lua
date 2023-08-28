@@ -19,7 +19,7 @@ function CreateAccount(name, owner, bank)
 
   if account ~= nil then
     MySQL.query.await('INSERT INTO `accounts_access` (`account_id`, `character_id`, `level`) VALUES (?,?,?)',
-      { account["id"], owner, 1 })
+      { account["id"], owner, Config.AccessLevels.Admin })
   end
 
   return account
@@ -27,10 +27,14 @@ end
 
 function GetUserAccountData(character, bank)
   local accounts = MySQL.query.await(
-    'SELECT`accounts`.`id`,`accounts`.`name`,`accounts`.`owner_id`,`accounts`.`cash`,`accounts`.`gold`,`accounts`.`locked`,`accounts_access`.`level`FROM`accounts`INNER JOIN`accounts_access`ON`accounts`.`id`=`accounts_access`.`account_id`INNER JOIN`banks`on`banks`.`id`=`accounts`.`bank_id`WHERE`accounts_access`.`character_id`= ? AND`banks`.`id`= ?;',
+    'SELECT `accounts`.`id`,`accounts`.`name`,`accounts`.`owner_id`,`accounts`.`cash`,`accounts`.`gold`,`accounts`.`locked`,`accounts_access`.`level` FROM `accounts` INNER JOIN `accounts_access` ON `accounts`.`id`=`accounts_access`.`account_id` INNER JOIN `banks`on`banks`.`id`=`accounts`.`bank_id` WHERE `accounts_access`.`character_id`= ? AND `banks`.`id`= ?;',
     { character, bank })
 
   return accounts
+end
+
+function GetAccountDetails(account)
+  return MySQL.query.await('SELECT * FROM `accounts` WHERE `id`=?', { account })[1]
 end
 
 function AddAccountAccess(account, character, level)
@@ -48,4 +52,98 @@ function IsAccountOwner(account, character)
   end
 
   return owner == character
+end
+
+function IsAccountAdmin(account, character)
+  local record = MySQL.query.await(
+    'SELECT `level` FROM `accounts_access` WHERE `account_id`=? and `character_id`=? LIMIT 1;',
+    { account, character })[1]
+
+  if record == nil then
+    return false
+  end
+
+  return record == 1
+end
+
+function HasAccountAccess(account, character)
+  local record = MySQL.query.await(
+    'SELECT `level` FROM `accounts_access` WHERE `account_id`=? and `character_id`=? LIMIT 1;',
+    { account, character })[1]
+
+  if record == nil then
+    return false
+  end
+
+  return true
+end
+
+function GetAccountAccess(account, character)
+  local record = MySQL.query.await(
+    'SELECT `level` FROM `accounts_access` WHERE `account_id`=? and `character_id`=? LIMIT 1;',
+    { account, character })[1]
+
+  if record == nil then
+    return false
+  end
+
+  return record
+end
+
+function DepositCash(account, amount)
+  local cash = MySQL.query.await('SELECT `cash` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+
+  if cash == nil then
+    return false
+  end
+
+  local newAmount = cash + amount
+  MySQL.query.await('UPDATE `accounts` SET `cash`=? WHERE `id`=?', { newAmount, account })
+  return true
+end
+
+function DepositGold(account, amount)
+  local gold = MySQL.query.await('SELECT `gold` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+
+  if gold == nil then
+    return false
+  end
+
+  local newAmount = gold + amount
+  MySQL.query.await('UPDATE `accounts` SET `gold`=? WHERE `id`=?', { newAmount, account })
+  return true
+end
+
+function WithdrawCash(account, amount)
+  local cash = MySQL.query.await('SELECT `cash` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+
+  if cash == nil then
+    return false
+  end
+
+  local newAmount = cash - amount
+
+  if newAmount < 0 then
+    return false
+  end
+
+  MySQL.query.await('UPDATE `accounts` SET `cash`=? WHERE `id`=?', { newAmount, account })
+  return true
+end
+
+function WithdrawGold(account, amount)
+  local gold = MySQL.query.await('SELECT `gold` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+
+  if gold == nil then
+    return false
+  end
+
+  local newAmount = gold - amount
+
+  if newAmount < 0 then
+    return false
+  end
+
+  MySQL.query.await('UPDATE `accounts` SET `gold`=? WHERE `id`=?', { newAmount, account })
+  return true
 end

@@ -19,8 +19,10 @@
 
 ## Disclaimers and Credits
 
-- This script might have some inspirations. Add them here if there are any.
+-   This script might have some inspirations. Add them here if there are any.
 
 ## Dependency
 
-- What does your script rely on (vorp, menuapi, oxmysql, etc)
+-   Oxymysql
+-   Feather Core
+-   Feather Inventory

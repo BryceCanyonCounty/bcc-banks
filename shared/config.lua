@@ -15,6 +15,13 @@ Config.BlipColor          = {
   closed = "RED",
 }
 
+Config.AccessLevels       = {
+  Admin = 1,            -- Can grant access to other people
+  Withdraw_Deposit = 2, -- Can Withdraw and Deposit Funds
+  Deposit = 3,          -- Can Only Deposit
+  ReadOnly = 4,         -- Can Only See balances
+}
+
 Config.Accounts           = {
   MaxAccounts = 5 -- 0 = No Limit
 }
