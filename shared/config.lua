@@ -1,20 +1,69 @@
 Config                    = {}
 
--- NPC Options
-Config.ShowNPC            = true
-Config.SpawnDistance      = 100.0
-Config.NPCModel           = "s_m_m_bankclerk_01"
+UseBankerBusy             = true -- If enabled only 1 person can use the bank at a time
 
-Config.PromptDistance     = 3.0
-
--- Blip Options
-Config.ShowBlips          = true
-Config.ShowBlipClosed     = true
-Config.BlipColor          = {
-  open = "WHITE",
-  closed = "RED",
+-- https://github.com/femga/rdr3_discoveries/blob/master/Controls/README.md
+Config.PromptSettings     = {
+  Distance = 3.0,         -- Distance for the prompt to work
+  TellerKey = 0x760A9C6F, -- Letter G
+  SDBKey = 0x760A9C6F     -- Letter G
 }
 
+-- NPC Options
+-- Models: https://github.com/femga/rdr3_discoveries/blob/master/peds/peds_list.lua
+Config.NPCSettings        = {
+  Show     = true,
+  Distance = 100.0,
+  Model    = "s_m_m_bankclerk_01",
+}
+
+-- Blip Options
+Config.BlipSettings       = {
+  Show            = true,
+  ShowClosed      = true,
+  UseDistance     = true,
+  Distance        = 100.0,
+  Colors          = {
+    Open = "WHITE",
+    Closed = "RED",
+  },
+  AvailableColors = {
+    LIGHT_BLUE    = "BLIP_MODIFIER_MP_COLOR_1",
+    DARK_RED      = "BLIP_MODIFIER_MP_COLOR_2",
+    PURPLE        = "BLIP_MODIFIER_MP_COLOR_3",
+    ORANGE        = "BLIP_MODIFIER_MP_COLOR_4",
+    TEAL          = "BLIP_MODIFIER_MP_COLOR_5",
+    LIGHT_YELLOW  = "BLIP_MODIFIER_MP_COLOR_6",
+    PINK          = "BLIP_MODIFIER_MP_COLOR_7",
+    GREEN         = "BLIP_MODIFIER_MP_COLOR_8",
+    DARK_TEAL     = "BLIP_MODIFIER_MP_COLOR_9",
+    RED           = "BLIP_MODIFIER_MP_COLOR_10",
+    LIGHT_GREEN   = "BLIP_MODIFIER_MP_COLOR_11",
+    TEAL2         = "BLIP_MODIFIER_MP_COLOR_12",
+    BLUE          = "BLIP_MODIFIER_MP_COLOR_13",
+    DARK_PUPLE    = "BLIP_MODIFIER_MP_COLOR_14",
+    DARK_PINK     = "BLIP_MODIFIER_MP_COLOR_15",
+    DARK_DARK_RED = "BLIP_MODIFIER_MP_COLOR_16",
+    GRAY          = "BLIP_MODIFIER_MP_COLOR_17",
+    PINKISH       = "BLIP_MODIFIER_MP_COLOR_18",
+    YELLOW_GREEN  = "BLIP_MODIFIER_MP_COLOR_19",
+    DARK_GREEN    = "BLIP_MODIFIER_MP_COLOR_20",
+    BRIGHT_BLUE   = "BLIP_MODIFIER_MP_COLOR_21",
+    BRIGHT_PURPLE = "BLIP_MODIFIER_MP_COLOR_22",
+    YELLOW_ORANGE = "BLIP_MODIFIER_MP_COLOR_23",
+    BLUE2         = "BLIP_MODIFIER_MP_COLOR_24",
+    TEAL3         = "BLIP_MODIFIER_MP_COLOR_25",
+    TAN           = "BLIP_MODIFIER_MP_COLOR_26",
+    OFF_WHITE     = "BLIP_MODIFIER_MP_COLOR_27",
+    LIGHT_YELLOW2 = "BLIP_MODIFIER_MP_COLOR_28",
+    LIGHT_PINK    = "BLIP_MODIFIER_MP_COLOR_29",
+    LIGHT_RED     = "BLIP_MODIFIER_MP_COLOR_30",
+    LIGHT_YELLOW3 = "BLIP_MODIFIER_MP_COLOR_31",
+    WHITE         = "BLIP_MODIFIER_MP_COLOR_32",
+  }
+}
+
+-- Access Level Options
 Config.AccessLevels       = {
   Admin = 1,            -- Can grant access to other people
   Withdraw_Deposit = 2, -- Can Withdraw and Deposit Funds
@@ -22,10 +71,12 @@ Config.AccessLevels       = {
   ReadOnly = 4,         -- Can Only See balances
 }
 
+-- Bank Account Options
 Config.Accounts           = {
   MaxAccounts = 5 -- 0 = No Limit
 }
 
+-- Safety Deposit Box Options
 Config.SafetyDepositBoxes = {
 
   MaxBoxes = 5, -- 0 = No Limit
@@ -57,43 +108,7 @@ Config.SafetyDepositBoxes = {
   }
 }
 
--- Blip Colors
-Config.BlipColors         = {
-  LIGHT_BLUE    = "BLIP_MODIFIER_MP_COLOR_1",
-  DARK_RED      = "BLIP_MODIFIER_MP_COLOR_2",
-  PURPLE        = "BLIP_MODIFIER_MP_COLOR_3",
-  ORANGE        = "BLIP_MODIFIER_MP_COLOR_4",
-  TEAL          = "BLIP_MODIFIER_MP_COLOR_5",
-  LIGHT_YELLOW  = "BLIP_MODIFIER_MP_COLOR_6",
-  PINK          = "BLIP_MODIFIER_MP_COLOR_7",
-  GREEN         = "BLIP_MODIFIER_MP_COLOR_8",
-  DARK_TEAL     = "BLIP_MODIFIER_MP_COLOR_9",
-  RED           = "BLIP_MODIFIER_MP_COLOR_10",
-  LIGHT_GREEN   = "BLIP_MODIFIER_MP_COLOR_11",
-  TEAL2         = "BLIP_MODIFIER_MP_COLOR_12",
-  BLUE          = "BLIP_MODIFIER_MP_COLOR_13",
-  DARK_PUPLE    = "BLIP_MODIFIER_MP_COLOR_14",
-  DARK_PINK     = "BLIP_MODIFIER_MP_COLOR_15",
-  DARK_DARK_RED = "BLIP_MODIFIER_MP_COLOR_16",
-  GRAY          = "BLIP_MODIFIER_MP_COLOR_17",
-  PINKISH       = "BLIP_MODIFIER_MP_COLOR_18",
-  YELLOW_GREEN  = "BLIP_MODIFIER_MP_COLOR_19",
-  DARK_GREEN    = "BLIP_MODIFIER_MP_COLOR_20",
-  BRIGHT_BLUE   = "BLIP_MODIFIER_MP_COLOR_21",
-  BRIGHT_PURPLE = "BLIP_MODIFIER_MP_COLOR_22",
-  YELLOW_ORANGE = "BLIP_MODIFIER_MP_COLOR_23",
-  BLUE2         = "BLIP_MODIFIER_MP_COLOR_24",
-  TEAL3         = "BLIP_MODIFIER_MP_COLOR_25",
-  TAN           = "BLIP_MODIFIER_MP_COLOR_26",
-  OFF_WHITE     = "BLIP_MODIFIER_MP_COLOR_27",
-  LIGHT_YELLOW2 = "BLIP_MODIFIER_MP_COLOR_28",
-  LIGHT_PINK    = "BLIP_MODIFIER_MP_COLOR_29",
-  LIGHT_RED     = "BLIP_MODIFIER_MP_COLOR_30",
-  LIGHT_YELLOW3 = "BLIP_MODIFIER_MP_COLOR_31",
-  WHITE         = "BLIP_MODIFIER_MP_COLOR_32",
-}
-
--- Door Hashes 0 = unlocked 1 = locked
+-- Door Lock Settings (0 = unlocked, 1 = locked)
 Config.Doors              = {
   [2642457609] = 0, -- Valentine bank, front entrance, left door
   [3886827663] = 0, -- Valentine bank, front entrance, right door

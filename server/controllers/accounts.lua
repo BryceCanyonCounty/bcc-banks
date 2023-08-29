@@ -25,15 +25,33 @@ function CreateAccount(name, owner, bank)
   return account
 end
 
-function GetUserAccountData(character, bank)
+function DeleteAccount(account, character)
+  local accountDetails = GetAccount(account)
+  if accountDetails == nil then
+    return false
+  end
+
+  if accountDetails.gold > 0 or accountDetails.cash > 0 then
+    return false
+  end
+
+  if not IsAccountAdmin(account, character) then
+    return false
+  end
+
+  MySQL.query.await('DELETE FROM `accounts` WHERE `id`=?', account)
+  return true
+end
+
+function GetAccounts(character, bank)
   local accounts = MySQL.query.await(
-    'SELECT `accounts`.`id`,`accounts`.`name`,`accounts`.`owner_id`,`accounts`.`cash`,`accounts`.`gold`,`accounts`.`locked`,`accounts_access`.`level` FROM `accounts` INNER JOIN `accounts_access` ON `accounts`.`id`=`accounts_access`.`account_id` INNER JOIN `banks`on`banks`.`id`=`accounts`.`bank_id` WHERE `accounts_access`.`character_id`= ? AND `banks`.`id`= ?;',
+    "SELECT `accounts`.`id`, `accounts`.`name` as 'account_name', CONCAT(`characters`.`first_name`, ' ', `characters`.`last_name`) as 'owner_name', `accounts_access`.`level` FROM `accounts` INNER JOIN `accounts_access` ON `accounts`.`id`=`accounts_access`.`account_id` INNER JOIN `banks`on`banks`.`id`=`accounts`.`bank_id` INNER JOIN `characters` ON `characters`.`id` = `accounts`.`owner_id` WHERE `accounts_access`.`character_id`= ? AND `banks`.`id`= ?;",
     { character, bank })
 
   return accounts
 end
 
-function GetAccountDetails(account)
+function GetAccount(account)
   return MySQL.query.await('SELECT * FROM `accounts` WHERE `id`=?', { account })[1]
 end
 

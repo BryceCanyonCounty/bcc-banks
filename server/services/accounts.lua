@@ -1,7 +1,7 @@
-Feather.RPC.Register('Feather:Banks:GetAccountData', function(params, res, src)
+Feather.RPC.Register('Feather:Banks:GetAccounts', function(params, res, src)
   local character = Feather.Character.GetCharacterBySrc(src)
   local bank = tonumber(params.bank)
-  res(GetUserAccountData(character.id, bank))
+  res(GetAccounts(character.id, bank))
   return
 end)
 
@@ -13,10 +13,17 @@ Feather.RPC.Register('Feather:Banks:CreateAccount', function(params, res, src)
   return
 end)
 
+Feather.RPC.Register('Feather:Banks:DeleteAccount', function(params, res, src)
+  local character = Feather.Character.GetCharacterBySrc(src)
+  local account = params.account
+  res(DeleteAccount(account, character.id))
+end)
+
 Feather.RPC.Register('Feather:Banks:AddAccountAccess', function(params, res, src)
   local character = Feather.Character.GetCharacterBySrc(src)
   local account = tonumber(params.account)
-  local otherCharacter = tonumber(params.character)
+  local otherSrc = tonumber(params.user)
+  local otherCharacter = Feather.Character.GetCharacterBySrc(otherSrc).id
   local level = tonumber(params.level)
 
   if not IsAccountOwner(account, character.id) and not IsAccountAdmin(account, character.id) then
@@ -52,7 +59,7 @@ Feather.RPC.Register('Feather:Banks:DepositCash', function(params, res, src)
 
   Feather.Character.UpdateAttribute(src, 'dollars', character.dollars - amount)
 
-  res(GetAccountDetails(account))
+  res(GetAccount(account))
   return
 end)
 
@@ -78,7 +85,7 @@ Feather.RPC.Register('Feather:Banks:DepositGold', function(params, res, src)
 
   Feather.Character.UpdateAttribute(src, 'gold', character.gold - amount)
 
-  res(GetAccountDetails(account))
+  res(GetAccount(account))
   return
 end)
 
@@ -99,7 +106,7 @@ Feather.RPC.Register('Feather:Banks:WithdrawCash', function(params, res, src)
 
   Feather.Character.UpdateAttribute(src, 'dollars', character.dollars + amount)
 
-  res(GetAccountDetails(account))
+  res(GetAccount(account))
   return
 end)
 
@@ -120,7 +127,7 @@ Feather.RPC.Register('Feather:Banks:WithdrawGold', function(params, res, src)
 
   Feather.Character.UpdateAttribute(src, 'gold', character.gold + amount)
 
-  res(GetAccountDetails(account))
+  res(GetAccount(account))
   return
 end)
 

@@ -7,12 +7,15 @@ version '1.0.0'
 author 'BCC Scripts'
 
 client_scripts {
+   'client/api-loader.lua',
+   'client/helpers/*.lua',
+   'client/services/*.lua',
    'client/main.lua',
 }
 
 server_scripts {
    '@oxmysql/lib/MySQL.lua',
-   'server/api-loader.lua', -- Load Core and Inventory API's
+   'server/api-loader.lua',
    'server/helpers/*.lua',
    'server/controllers/*.lua',
    'server/services/*.lua',
@@ -20,16 +23,17 @@ server_scripts {
 }
 
 shared_scripts {
+   'shared/helpers/*.lua',
    'shared/config.lua'
 }
 
 
 ui_page {
-   "ui/index.html"
+   "ui/shim.html"
 }
 
 files {
-   "ui/index.html",
+   "ui/shim.html",
    "ui/js/*.*",
    "ui/css/*.*",
    "ui/fonts/*.*",

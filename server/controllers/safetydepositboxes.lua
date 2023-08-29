@@ -48,7 +48,7 @@ end
 
 function GetUserSDBData(character, bank)
   local accounts = MySQL.query.await(
-    'SELECT `safety_deposit_boxes`.`id`, `safety_deposit_boxes`.`name`, `safety_deposit_boxes`.`owner_id`, `safety_deposit_boxes`.`inventory_id`, `safety_deposit_boxes`.`locked`, `safety_deposit_boxes_access`.`level` FROM `safety_deposit_boxes` INNER JOIN `safety_deposit_boxes_access` ON `safety_deposit_boxes`.`id` = `safety_deposit_boxes_access`.`safety_deposit_box_id` INNER JOIN `banks` on `banks`.`id` = `safety_deposit_boxes`.`bank_id` WHERE `safety_deposit_boxes_access`.`character_id` = ? AND `banks`.`id` = ?;',
+    'SELECT `safety_deposit_boxes`.`id`, `safety_deposit_boxes`.`name`, `safety_deposit_boxes`.`owner_id`, `safety_deposit_boxes`.`inventory_id`, `safety_deposit_boxes_access`.`level` FROM `safety_deposit_boxes` INNER JOIN `safety_deposit_boxes_access` ON `safety_deposit_boxes`.`id` = `safety_deposit_boxes_access`.`safety_deposit_box_id` INNER JOIN `banks` on `banks`.`id` = `safety_deposit_boxes`.`bank_id` WHERE `safety_deposit_boxes_access`.`character_id` = ? AND `banks`.`id` = ?;',
     { character, bank })
 
   return accounts

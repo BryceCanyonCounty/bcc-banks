@@ -10,3 +10,14 @@ function Len(table)
 
   return count
 end
+
+Boolean = {
+  ["1"] = true,
+  ["0"] = false,
+  [1] = true,
+  [0] = false,
+  ["true"] = true,
+  ["false"] = false,
+  ["True"] = true,
+  ["False"] = false
+}

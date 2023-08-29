@@ -23,7 +23,6 @@ local tables = {
       `name` VARCHAR(255) NOT NULL,
       `bank_id` bigint UNSIGNED NOT NULL,
       `owner_id` bigint UNSIGNED NOT NULL,
-      `locked` tinyint default 0,
       `cash` double (15,2) default 0.0,
       `gold` double (15, 2) default 0.0,
       CONSTRAINT `FK_Bank` FOREIGN KEY (`bank_id`) REFERENCES `banks` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -80,24 +79,24 @@ local data = {
       INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Valentine', -308.16, 773.77, 118.70, 1.31, -2128054417);
       ]]
   },
-  {
-    name = 'Blackwater',
-    query = [[
-      INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Blackwater', -308.16, 773.77, 118.70, 1.31, -2128054417);
-      ]]
-  },
-  {
-    name = 'Saint Denis',
-    query = [[
-      INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Saint Denis', -308.16, 773.77, 118.70, 1.31, -2128054417);
-      ]]
-  },
-  {
-    name = 'Rhodes',
-    query = [[
-      INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Rhodes', -308.16, 773.77, 118.70, 1.31, -2128054417);
-      ]]
-  },
+  -- {
+  --   name = 'Blackwater',
+  --   query = [[
+  --     INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Blackwater', -308.16, 773.77, 118.70, 1.31, -2128054417);
+  --     ]]
+  -- },
+  -- {
+  --   name = 'Saint Denis',
+  --   query = [[
+  --     INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Saint Denis', -308.16, 773.77, 118.70, 1.31, -2128054417);
+  --     ]]
+  -- },
+  -- {
+  --   name = 'Rhodes',
+  --   query = [[
+  --     INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Rhodes', -308.16, 773.77, 118.70, 1.31, -2128054417);
+  --     ]]
+  -- },
 }
 
 function LoadDatabase()
