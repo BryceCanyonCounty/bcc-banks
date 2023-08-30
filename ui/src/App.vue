@@ -1,19 +1,21 @@
 <script setup>
 import api from './api';
+
 import { ref, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { RouterView } from 'vue-router';
+import { RouterView, useRouter } from 'vue-router';
 import '@/assets/styles/main.css';
 
 import NavigationBar from '@/components/NavigationBar.vue';
-import ModalPanel from '@/components/ModalPanel.vue';
+import NewAccountModal from '@/components/modals/NewAccountModal.vue';
 
 import { useSessionStore } from '@/stores/session';
 import { useAccountStore } from '@/stores/accounts';
 
-const devmode = ref(true);
+const devmode = ref(false);
 const visible = ref(false);
 const showCreateAccountModal = ref(false);
+const router = useRouter();
 
 // Store Vars
 const sessionStore = useSessionStore();
@@ -32,8 +34,7 @@ const onMessage = (event) => {
     switch (event.data.type) {
         case 'toggle':
             visible.value = event.data.visible;
-            console.log(event.data.accounts);
-            sessionStore.setBankId(event.data.bank.id);
+            sessionStore.setBankId(event.data.bank['id']);
             sessionStore.setBankName(event.data.bank.name);
             accountStore.storeAccounts(event.data.accounts);
 
@@ -52,6 +53,7 @@ const onMessage = (event) => {
 };
 
 const closeApp = () => {
+    router.push({ name: 'home' });
     visible.value = false;
     api.post('Feather:Banks:UpdateState', {
         state: visible.value,
@@ -60,23 +62,20 @@ const closeApp = () => {
     });
 };
 
-// Create Account Form
-const accountName = ref('');
-const closeCreateAccountModal = () => {
-    accountName.value = '';
-    showCreateAccountModal.value = false;
-};
-
-const createAccount = () => {
-    if (accountName.value !== null) {
+const createAccount = (event) => {
+    if (event !== null) {
         showCreateAccountModal.value = false;
-        api.post('createAccount', {
-            accountName: accountName.value,
-            bankId: getBankId.value,
-        }).catch((e) => {
-            console.log(e);
-        });
-        accountName.value = '';
+
+        api.post('Feather:Banks:CreateAccount', {
+            name: event,
+            bank: getBankId.value,
+        })
+            .then((event) => {
+                accountStore.storeAccounts(event.data);
+            })
+            .catch((e) => {
+                console.log(e.message);
+            });
     }
 };
 </script>
@@ -103,44 +102,11 @@ const createAccount = () => {
             <RouterView />
         </div>
 
-        <ModalPanel :visible="showCreateAccountModal" title="New Account">
-            <div>
-                <label
-                    for="accountName"
-                    class="block text-sm font-medium leading-6 text-gray-200"
-                    >Account Name</label
-                >
-                <div class="mt-2">
-                    <input
-                        type="text"
-                        name="accountName"
-                        id="accountName"
-                        v-model="accountName"
-                        class="block w-full rounded-md border-0 py-1.5 text-gray-900 placeholder:text-gray-400 text-sm p-1"
-                        placeholder="MooMoo Milk Sales"
-                        aria-describedby="email-description"
-                    />
-                </div>
-                <div class="flex justify-end">
-                    <button
-                        @click="createAccount"
-                        class="border border-gray-950 text-gray-400 rounded-md mt-3 p-1 button"
-                        :class="{
-                            disabledButton:
-                                accountName === null || accountName.length < 5,
-                        }"
-                    >
-                        Create
-                    </button>
-                    <button
-                        @click="closeCreateAccountModal"
-                        class="border border-gray-950 text-gray-400 rounded-md mt-3 ml-3 p-1 button"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </ModalPanel>
+        <NewAccountModal
+            :visible="showCreateAccountModal"
+            @CloseNewAccountModal="showCreateAccountModal = false"
+            @CreateAccount="createAccount($event, accountName)"
+        ></NewAccountModal>
     </div>
 </template>
 
@@ -185,14 +151,7 @@ const createAccount = () => {
     font-size: 25px;
 }
 
-.button {
-    background-color: rgb(30, 30, 30);
-}
 .font-crock {
     font-family: 'crock';
-}
-
-.disabledButton {
-    background-color: red;
 }
 </style>

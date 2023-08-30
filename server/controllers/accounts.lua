@@ -10,9 +10,11 @@ end
 function CreateAccount(name, owner, bank)
   local currentAccounts = GetAccountCount(owner, bank)
 
+
   if Config.Accounts.MaxAccounts ~= 0 and (currentAccounts >= Config.Accounts.MaxAccounts) then
     return false
   end
+
 
   local account = MySQL.query.await('INSERT INTO `accounts` (name, bank_id, owner_id) VALUES (?,?,?) RETURNING *;',
     { name, bank, owner })[1]
@@ -22,25 +24,25 @@ function CreateAccount(name, owner, bank)
       { account["id"], owner, Config.AccessLevels.Admin })
   end
 
-  return account
+  return GetAccounts(owner, bank)
 end
 
-function DeleteAccount(account, character)
+function CloseAccount(bank, account, character)
   local accountDetails = GetAccount(account)
   if accountDetails == nil then
-    return false
+    return { status = false, message = 'This account does not exist.' }
   end
 
   if accountDetails.gold > 0 or accountDetails.cash > 0 then
-    return false
+    return { status = false, message = 'You must withdraw all cash and gold before closing this account.' }
   end
 
   if not IsAccountAdmin(account, character) then
-    return false
+    return { status = false, message = 'You don\'t have permission to close this account.' }
   end
 
-  MySQL.query.await('DELETE FROM `accounts` WHERE `id`=?', account)
-  return true
+  MySQL.query.await('DELETE FROM `accounts` WHERE `id`=?', { account })
+  return { status = true, accounts = GetAccounts(character, bank) }
 end
 
 function GetAccounts(character, bank)
@@ -75,7 +77,7 @@ end
 function IsAccountAdmin(account, character)
   local record = MySQL.query.await(
     'SELECT `level` FROM `accounts_access` WHERE `account_id`=? and `character_id`=? LIMIT 1;',
-    { account, character })[1]
+    { account, character })[1]['level']
 
   if record == nil then
     return false

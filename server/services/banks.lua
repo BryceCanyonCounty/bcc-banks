@@ -3,7 +3,7 @@ Feather.RPC.Register('Feather:Banks:GetBanks', function(params, res, src)
 end)
 
 Feather.RPC.Register('Feather:Banks:CreateBank', function(params, res, src)
-  -- TODO: Implmenet a method to create a bank at your current location.
+  -- TODO Implmenet a method to create a bank at your current location.
   res(true)
 end)
 

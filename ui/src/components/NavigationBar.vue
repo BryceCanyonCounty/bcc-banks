@@ -29,7 +29,7 @@ const accountStore = useAccountStore();
                 :key="account.id"
                 route="accounts"
                 :id="account.id"
-                :label="account.name"
+                :label="account.account_name"
             />
         </div>
     </nav>

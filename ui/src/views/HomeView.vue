@@ -11,7 +11,7 @@ const accountStore = useAccountStore();
             <AccountPreviewItem
                 v-for="account in accountStore.getAccounts"
                 :key="account.id"
-                :accountName="account.name"
+                :accountName="account.account_name"
                 :accountId="account.id"
                 :ownerName="account.owner_name"
             />

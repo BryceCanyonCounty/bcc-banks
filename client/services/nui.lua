@@ -38,10 +38,19 @@ end)
 
 RegisterNUICallback('Feather:Banks:CloseAccount', function(args, cb)
   local data = {
+    bank = args.bank,
     account = args.account,
   }
 
   cb(Feather.RPC.CallAsync('Feather:Banks:CloseAccount', data))
+end)
+
+RegisterNUICallback('Feather:Banks:GetAccount', function(args, cb)
+  local data = {
+    account = args.account
+  }
+
+  cb(Feather.RPC.CallAsync('Feather:Banks:GetAccount', data))
 end)
 
 RegisterNUICallback('Feather:Banks:AddAccess', function(args, cb)

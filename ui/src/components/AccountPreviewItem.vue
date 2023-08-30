@@ -1,8 +1,8 @@
 <script setup>
 defineProps({
     accountName: String,
+    ownerName: String,
     accountId: Number,
-    ownerName: Number,
 });
 </script>
 
@@ -12,7 +12,7 @@ defineProps({
         <div>
             <span class="font-semibold">Owner Name:</span> {{ ownerName }}
         </div>
-        <div><span class="font-semibold">Gold:</span> {{ gold }}</div>
+        <!-- <div><span class="font-semibold">Gold:</span> {{ gold }}</div> -->
         <div></div>
     </div>
 </template>

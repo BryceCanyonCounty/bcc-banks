@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: "crock";
-  src: url("./fonts/crock.ttf") format("truetype");
+    font-family: 'crock';
+    src: url('./fonts/crock.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: "robotoslab";
-  src: url("./fonts/robotoslab.ttf") format("truetype");
+    font-family: 'robotoslab';
+    src: url('./fonts/robotoslab.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: "HapnaSlabSerif-Medium";
-  src: url("./fonts/HapnaSlabSerif-Medium.ttf") format("truetype");
+    font-family: 'HapnaSlabSerif-Medium';
+    src: url('./fonts/HapnaSlabSerif-Medium.ttf') format('truetype');
 }

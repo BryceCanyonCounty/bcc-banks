@@ -9,14 +9,23 @@ Feather.RPC.Register('Feather:Banks:CreateAccount', function(params, res, src)
   local character = Feather.Character.GetCharacterBySrc(src)
   local name = params.name
   local bank = tonumber(params.bank)
+
   res(CreateAccount(name, character.id, bank))
   return
 end)
 
-Feather.RPC.Register('Feather:Banks:DeleteAccount', function(params, res, src)
+Feather.RPC.Register('Feather:Banks:CloseAccount', function(params, res, src)
+  local character = Feather.Character.GetCharacterBySrc(src)
+  local bank = params.bank
+  local account = params.account
+  res(CloseAccount(bank, account, character.id))
+end)
+
+Feather.RPC.Register('Feather:Banks:GetAccount', function(params, res, src)
   local character = Feather.Character.GetCharacterBySrc(src)
   local account = params.account
-  res(DeleteAccount(account, character.id))
+
+  res(GetAccount(account))
 end)
 
 Feather.RPC.Register('Feather:Banks:AddAccountAccess', function(params, res, src)
