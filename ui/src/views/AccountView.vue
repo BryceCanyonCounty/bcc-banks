@@ -26,6 +26,7 @@ const getAccountDetails = (accountId) => {
         });
 };
 
+// TODO lock account when accessed to prevent double access
 let account = getAccountById.value(Number(route.params.id));
 const accountDetails = ref(null);
 getAccountDetails(route.params.id);
