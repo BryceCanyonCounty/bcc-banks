@@ -47,10 +47,21 @@ end)
 
 RegisterNUICallback('Feather:Banks:GetAccount', function(args, cb)
   local data = {
-    account = args.account
+    account = args.account,
+    lockAccount = args.lockAccount,
   }
 
   cb(Feather.RPC.CallAsync('Feather:Banks:GetAccount', data))
+end)
+
+RegisterNUICallback('Feather:Banks:UnlockAccount', function(args, cb)
+  cb('ok')
+
+  local data = {
+    account = args.account,
+  }
+
+  Feather.RPC.Notify('Feather:Banks:UnlockAccount', data)
 end)
 
 RegisterNUICallback('Feather:Banks:AddAccess', function(args, cb)
@@ -68,6 +79,7 @@ RegisterNUICallback('Feather:Banks:MakeDeposit', function(args, cb)
   local data = {
     account = args.account,
     amount = args.amount,
+    description = args.description,
   }
 
   if type == 'cash' then
@@ -82,6 +94,7 @@ RegisterNUICallback('Feather:Banks:MakeWithdraw', function(args, cb)
   local data = {
     account = args.account,
     amount = args.amount,
+    description = args.description,
   }
 
   if type == 'cash' then

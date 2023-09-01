@@ -1,3 +1,5 @@
+local LockedAccounts = {}
+
 function GetAccountCount(owner, bank)
   local result = MySQL.query.await(
     'SELECT COUNT(*) FROM `accounts` WHERE `owner_id`=? AND `bank_id`=?',
@@ -166,4 +168,29 @@ function WithdrawGold(account, amount)
 
   MySQL.query.await('UPDATE `accounts` SET `gold`=? WHERE `id`=?', { newAmount, account })
   return true
+end
+
+function IsAccountLocked(account, src)
+  return LockedAccounts[account] ~= nil
+end
+
+function IsActiveUser(account, src)
+  return LockedAccounts[account] == src
+end
+
+function SetLockedAccount(account, src, state)
+  if state then
+    LockedAccounts[account] = src
+  else
+    LockedAccounts[account] = nil
+  end
+end
+
+function ClearAccountLocks(src)
+  for k, v in pairs(LockedAccounts) do
+    if v == src then
+      LockedAccounts[k] = nil
+      return
+    end
+  end
 end

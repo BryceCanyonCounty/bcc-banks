@@ -7,15 +7,7 @@ const accountStore = useAccountStore();
 
 <template>
     <div class="w-full">
-        <div class="grid grid-cols-3 gap-4 mt-10 px-5">
-            <AccountPreviewItem
-                v-for="account in accountStore.getAccounts"
-                :key="account.id"
-                :accountName="account.account_name"
-                :accountId="account.id"
-                :ownerName="account.owner_name"
-            />
-        </div>
+        <div class=""></div>
     </div>
 </template>
 

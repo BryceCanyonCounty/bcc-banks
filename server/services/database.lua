@@ -43,6 +43,55 @@ local tables = {
     ]],
   },
   {
+    name = 'loans',
+    query = [[
+      CREATE TABLE IF NOT EXISTS `loans` (
+      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+      `account_id` bigint UNSIGNED NOT NULL,
+      `character_id` bigint UNSIGNED NOT NULL,
+      `amount` double (15, 2) NOT NULL,
+      `interest` double (15, 2) NOT NULL,
+      `duration` int UNSIGNED NOT NULL,
+      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT `FK_l_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT `FK_l_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      ]]
+  },
+  {
+    name = 'loans_payments',
+    query = [[
+      CREATE TABLE IF NOT EXISTS `loans_payments` (
+      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+      `loan_id` bigint UNSIGNED NOT NULL,
+      `amount` double (15, 2) NOT NULL,
+      `date_due` datetime NOT NULL,
+      `is_paid` boolean NOT NULL DEFAULT false,
+      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT `FK_lp_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      ]]
+  },
+  {
+    name = 'transactions',
+    query = [[
+      CREATE TABLE IF NOT EXISTS `transactions` (
+      `uuid` uuid DEFAULT UUID() NOT NULL PRIMARY KEY,
+      `account_id` bigint UNSIGNED,
+      `loan_id` bigint UNSIGNED,
+      `character_id` bigint UNSIGNED NOT NULL,
+      `amount` double (15, 2) NOT NULL,
+      `type` VARCHAR(255) NOT NULL,
+      `description` VARCHAR(255) NOT NULL,
+      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT `FK_t_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT `FK_t_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      ]]
+  },
+  {
     name = 'safety_deposit_boxes',
     query = [[
       CREATE TABLE IF NOT EXISTS `safety_deposit_boxes` (

@@ -82,20 +82,19 @@ const createAccount = (event) => {
 
 <template>
     <div class="container" v-if="visible || devmode">
-        <div class="absolute inset-y-0 flex flex-col w-64 h-full sidebar">
+        <div class="sidebar">
             <NavigationBar @create-account="showCreateAccountModal = true" />
         </div>
-        <div class="pl-64 h-full content">
+
+        <div class="content">
             <div
                 @click="closeApp"
-                class="absolute text-gray-400 text-2xl right-3 hover:text-red-800"
+                class="close-button text-gray-400 text-2xl right-3 hover:text-red-800"
             >
                 &times;
             </div>
             <div class="text-center">
-                <h1
-                    class="text-gray-50 title text-center text-3xl pt-5 font-crock"
-                >
+                <h1 class="text-gray-50 title text-center pt-5 font-crock">
                     {{ `${getBankName} Bank` }}
                 </h1>
             </div>
@@ -114,15 +113,9 @@ const createAccount = (event) => {
 .container {
     background-color: rgb(32, 32, 32);
 
-    /* background-image: url('./assets/images/bg.jpg');
-  background-position: center;
-  background-repeat: no-repeat;
-  background-position: 0;
-  background-size: 100%; */
-
     border-radius: 6px;
-    height: 75vh;
-    width: 75vw;
+    max-height: 100em;
+    max-width: 150em;
 
     position: absolute;
     top: 0;
@@ -135,20 +128,33 @@ const createAccount = (event) => {
 }
 
 .content {
+    position: absolute;
+    height: 100%;
     background-color: rgb(18, 18, 18);
+    top: 0;
+    left: 15em;
+    width: 135em;
 }
 
 .sidebar {
+    position: absolute;
     background-color: rgb(17, 17, 17);
+    height: 100%;
+    min-width: 15em;
+    max-width: 15em;
 }
 
-#close {
+.close-button {
     position: absolute;
     right: 0;
     top: 0;
-    margin-right: 0.75rem;
-    margin-top: 0.3rem;
-    font-size: 25px;
+    margin: 0.5em 0.75em 0 0;
+    font-size: 2em;
+}
+
+.title {
+    font-size: 2.5em;
+    font-weight: 600;
 }
 
 .font-crock {

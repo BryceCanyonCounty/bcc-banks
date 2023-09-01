@@ -57,7 +57,8 @@ const close = () => {
     position: relative;
     z-index: 1;
     width: 80%;
-    max-width: 15vw;
+    max-width: 35em;
+    min-height: 20em;
     padding: 1rem;
     background: url('../assets/images/bgPanel.png');
     background-size: 100% 100%;
@@ -76,6 +77,7 @@ const close = () => {
     background-size: 100% 100%;
     background-repeat: no-repeat;
     padding: 15px 20px;
+    min-height: 5em;
 }
 
 .modal-header h2 {
