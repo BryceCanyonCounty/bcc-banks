@@ -28,9 +28,9 @@ The **Feather Banks** is a powerful and secure banking system designed to provid
 
 -   **Safety Deposit Boxes:** Offer a secure place for players to store their most valuable assets.
 
--   **Loan System (Database Structure Only):** Laying the foundation for future financial services.
-
 ## Planned Features:
+
+-   **Loan System:** Laying the foundation for future financial services.
 
 -   **Dynamic NPC/Bank Addition:** Add NPCs or banks via in-game commands, giving server administrators flexibility and control.
 
