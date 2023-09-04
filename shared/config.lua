@@ -27,6 +27,7 @@ Config.BlipSettings       = {
     Open = "WHITE",
     Closed = "RED",
   },
+
   AvailableColors = {
     LIGHT_BLUE    = "BLIP_MODIFIER_MP_COLOR_1",
     DARK_RED      = "BLIP_MODIFIER_MP_COLOR_2",

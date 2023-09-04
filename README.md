@@ -20,13 +20,13 @@ The **Feather Banks** is a powerful and secure banking system designed to provid
 
 -   **Distance Spawn Blips:** These are configurable, making it easy to manage and customize the player experience.
 
-## Implemented Pending Tests:
-
 -   **Deposit and Withdraw Cash or Gold:** Allow players to manage their wealth conveniently.
 
--   **Safety Deposit Boxes:** Offer a secure place for players to store their most valuable assets.
-
 -   **Transaction Logs:** Provide a detailed history of financial transactions for transparency and accountability.
+
+## Implemented Pending Tests:
+
+-   **Safety Deposit Boxes:** Offer a secure place for players to store their most valuable assets.
 
 -   **Loan System (Database Structure Only):** Laying the foundation for future financial services.
 
@@ -42,7 +42,7 @@ The **Feather Banks** is a powerful and secure banking system designed to provid
 
 -   **Armored Car Services (Separate Script):** Create an exciting career option for players who want to provide secure transportation for valuable assets.
 
-The **Feather Banks** is a comprehensive and dynamic addition to your FiveM server, enhancing immersion, realism, and player engagement. With its ongoing development and planned features, it ensures that your server remains at the forefront of the FiveM roleplay experience. Elevate your server today with Feather Banks, where financial opportunities await!
+The **Feather Banks** is a comprehensive and dynamic addition to your RedM server, enhancing immersion, realism, and player engagement. With its ongoing development and planned features, it ensures that your server remains at the forefront of the RedM roleplay experience. Elevate your server today with Feather Banks, where financial opportunities await!
 
 ### Dependencies
 

@@ -1,41 +1,14 @@
-<script setup>
-import { ref, watch } from 'vue';
-const emit = defineEmits(['update:activePage']);
-const props = defineProps({
-    currentPage: {
-        type: String,
-        required: true,
-    },
-});
-
-const activePage = ref('account-details');
-
-watch(
-    () => activePage.value,
-    (current, previous) => {
-        emit('update:activePage', current);
-    }
-);
-
-watch(
-    () => props.currentPage,
-    (current, previous) => {
-        activePage.value = current;
-    }
-);
-</script>
-
 <template>
     <div class="account-navigation text-gray-100">
         <ul class="navmenu">
             <li>
                 <button
-                    @click="activePage = 'account-details'"
+                    @click="activePage = 'dashboard'"
                     :class="{
-                        underline: activePage === 'account-details',
+                        underline: activePage === 'dashboard',
                     }"
                 >
-                    Account Details
+                    Dashboard
                 </button>
             </li>
             <li>
@@ -91,6 +64,33 @@ watch(
         </ul>
     </div>
 </template>
+
+<script setup>
+import { ref, watch } from 'vue';
+const emit = defineEmits(['update:activePage']);
+const props = defineProps({
+    currentPage: {
+        type: String,
+        required: true,
+    },
+});
+
+const activePage = ref('dashboard');
+
+watch(
+    () => activePage.value,
+    (current, previous) => {
+        emit('update:activePage', current);
+    }
+);
+
+watch(
+    () => props.currentPage,
+    (current, previous) => {
+        activePage.value = current;
+    }
+);
+</script>
 
 <style scoped>
 .account-navigation {

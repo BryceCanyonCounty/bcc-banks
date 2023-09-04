@@ -1,18 +1,3 @@
-<script setup>
-const props = defineProps({
-    label: String,
-    route: String,
-    active: {
-        type: Boolean,
-        default: false,
-    },
-    id: {
-        type: Number,
-        required: false,
-    },
-});
-</script>
-
 <template>
     <div>
         <RouterLink :to="{ name: route, params: { id: id } }">
@@ -27,6 +12,21 @@ const props = defineProps({
         </RouterLink>
     </div>
 </template>
+
+<script setup>
+const props = defineProps({
+    label: String,
+    route: String,
+    active: {
+        type: Boolean,
+        default: false,
+    },
+    id: {
+        type: Number,
+        required: false,
+    },
+});
+</script>
 
 <style scoped>
 .nav-item {

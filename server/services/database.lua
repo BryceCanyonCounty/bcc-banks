@@ -20,6 +20,7 @@ local tables = {
     query = [[
       CREATE TABLE IF NOT EXISTS `accounts` (
       `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+      `account_number` UUID DEFAULT UUID() NOT NULL,
       `name` VARCHAR(255) NOT NULL,
       `bank_id` bigint UNSIGNED NOT NULL,
       `owner_id` bigint UNSIGNED NOT NULL,
@@ -78,7 +79,7 @@ local tables = {
     name = 'transactions',
     query = [[
       CREATE TABLE IF NOT EXISTS `transactions` (
-      `uuid` uuid DEFAULT UUID() NOT NULL PRIMARY KEY,
+      `id` uuid DEFAULT UUID() NOT NULL PRIMARY KEY,
       `account_id` bigint UNSIGNED,
       `loan_id` bigint UNSIGNED,
       `character_id` bigint UNSIGNED NOT NULL,

@@ -1,11 +1,3 @@
-<script setup>
-defineProps({
-    accountName: String,
-    ownerName: String,
-    accountId: Number,
-});
-</script>
-
 <template>
     <div class="text-gray-900 px-3 text-center item">
         <div class="text-lg font-semibold underline">{{ accountName }}</div>
@@ -16,6 +8,14 @@ defineProps({
         <div></div>
     </div>
 </template>
+
+<script setup>
+defineProps({
+    accountName: String,
+    ownerName: String,
+    accountId: Number,
+});
+</script>
 
 <style scoped>
 .item {

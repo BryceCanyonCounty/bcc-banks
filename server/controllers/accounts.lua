@@ -14,7 +14,7 @@ function CreateAccount(name, owner, bank)
 
 
   if Config.Accounts.MaxAccounts ~= 0 and (currentAccounts >= Config.Accounts.MaxAccounts) then
-    return false
+    return { status = false, message = 'Maximum accounts reached: ' .. Config.Accounts.MaxAccounts }
   end
 
 
@@ -32,15 +32,15 @@ end
 function CloseAccount(bank, account, character)
   local accountDetails = GetAccount(account)
   if accountDetails == nil then
-    return { status = false, message = 'This account does not exist.' }
+    return { status = false, message = 'Can\'t Find Account' }
   end
 
   if accountDetails.gold > 0 or accountDetails.cash > 0 then
-    return { status = false, message = 'You must withdraw all cash and gold before closing this account.' }
+    return { status = false, message = 'Unable to close. Withdraw funds.' }
   end
 
   if not IsAccountAdmin(account, character) then
-    return { status = false, message = 'You don\'t have permission to close this account.' }
+    return { status = false, message = 'Insufficient Access' }
   end
 
   MySQL.query.await('DELETE FROM `accounts` WHERE `id`=?', { account })
@@ -109,41 +109,41 @@ function GetAccountAccess(account, character)
     return false
   end
 
-  return record
+  return record['level']
 end
 
 function DepositCash(account, amount)
-  local cash = MySQL.query.await('SELECT `cash` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+  local result = MySQL.query.await('SELECT `cash` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
 
-  if cash == nil then
+  if result['cash'] == nil then
     return false
   end
 
-  local newAmount = cash + amount
+  local newAmount = result['cash'] + amount
   MySQL.query.await('UPDATE `accounts` SET `cash`=? WHERE `id`=?', { newAmount, account })
   return true
 end
 
 function DepositGold(account, amount)
-  local gold = MySQL.query.await('SELECT `gold` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+  local result = MySQL.query.await('SELECT `gold` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
 
-  if gold == nil then
+  if result['gold'] == nil then
     return false
   end
 
-  local newAmount = gold + amount
+  local newAmount = result['gold'] + amount
   MySQL.query.await('UPDATE `accounts` SET `gold`=? WHERE `id`=?', { newAmount, account })
   return true
 end
 
 function WithdrawCash(account, amount)
-  local cash = MySQL.query.await('SELECT `cash` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+  local result = MySQL.query.await('SELECT `cash` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
 
-  if cash == nil then
+  if result['cash'] == nil then
     return false
   end
 
-  local newAmount = cash - amount
+  local newAmount = result['cash'] - amount
 
   if newAmount < 0 then
     return false
@@ -154,13 +154,13 @@ function WithdrawCash(account, amount)
 end
 
 function WithdrawGold(account, amount)
-  local gold = MySQL.query.await('SELECT `gold` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
+  local result = MySQL.query.await('SELECT `gold` FROM `accounts` WHERE `id`=? LIMIT 1;', { account })[1]
 
-  if gold == nil then
+  if result['gold'] == nil then
     return false
   end
 
-  local newAmount = gold - amount
+  local newAmount = result['gold'] - amount
 
   if newAmount < 0 then
     return false

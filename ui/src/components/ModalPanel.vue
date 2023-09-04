@@ -1,3 +1,17 @@
+<template>
+    <div class="modal-wrapper" v-if="visible">
+        <div class="modal-overlay" @click="close"></div>
+        <div class="modal">
+            <div class="modal-header">
+                <span class="text-gray-200">{{ title }}</span>
+            </div>
+            <div class="modal-body">
+                <slot></slot>
+            </div>
+        </div>
+    </div>
+</template>
+
 <script setup>
 defineProps({
     visible: {
@@ -14,20 +28,6 @@ const close = () => {
     this.$emit('update:visible', false);
 };
 </script>
-
-<template>
-    <div class="modal-wrapper" v-if="visible">
-        <div class="modal-overlay" @click="close"></div>
-        <div class="modal">
-            <div class="modal-header">
-                <span class="text-gray-200">{{ title }}</span>
-            </div>
-            <div class="modal-body">
-                <slot></slot>
-            </div>
-        </div>
-    </div>
-</template>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>

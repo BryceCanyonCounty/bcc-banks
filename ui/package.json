@@ -12,10 +12,12 @@
     "autoprefixer": "^10",
     "axios": "^0.27.2",
     "core-js": "^3.8.3",
+    "luxon": "^3.4.2",
     "pinia": "^2.1.6",
     "postcss": "^8",
     "tailwindcss": "^3",
     "vue": "^3.2.13",
+    "vue-currency-input": "^3.0.5",
     "vue-router": "^4.0.3"
   },
   "devDependencies": {

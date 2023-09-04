@@ -74,7 +74,7 @@ RegisterNUICallback('Feather:Banks:AddAccess', function(args, cb)
   cb(Feather.RPC.CallAsync('Feather:Banks:AddAccountAccess', data))
 end)
 
-RegisterNUICallback('Feather:Banks:MakeDeposit', function(args, cb)
+RegisterNUICallback('Feather:Banks:Deposit', function(args, cb)
   local type = args.type
   local data = {
     account = args.account,
@@ -89,7 +89,7 @@ RegisterNUICallback('Feather:Banks:MakeDeposit', function(args, cb)
   end
 end)
 
-RegisterNUICallback('Feather:Banks:MakeWithdraw', function(args, cb)
+RegisterNUICallback('Feather:Banks:Withdraw', function(args, cb)
   local type = args.type
   local data = {
     account = args.account,
@@ -102,4 +102,9 @@ RegisterNUICallback('Feather:Banks:MakeWithdraw', function(args, cb)
   elseif type == 'gold' then
     cb(Feather.RPC.CallAsync('Feather:Banks:WithdrawGold', data))
   end
+end)
+
+RegisterNUICallback('Feather:Banks:Notify', function(args, cb)
+  Feather.Notify.RightNotify(args.message, 4000)
+  cb('ok')
 end)
