@@ -1,6 +1,6 @@
 # Feather Banks
 
-The **Feather Banks** is a powerful and secure banking system designed to provide an immersive and realistic banking experience within your RedM roleplay server. This script offers a wide range of features that make it an essential addition to your server.
+**Feather Banks** is a powerful and secure banking system designed to provide an immersive and realistic banking experience within your RedM roleplay server. This script offers a wide range of features that make it an essential addition to your server.
 
 ## Implemented Features:
 
