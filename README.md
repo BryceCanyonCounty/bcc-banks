@@ -1,5 +1,8 @@
 # Feather Banks
 
+🚧 **This project is in active development and not officially released yet.**  
+It is designed exclusively for use with the [Feather Framework](https://github.com/FeatherFramework) and its dependencies:
+
 **Feather Banks** is a powerful and secure banking system designed to provide an immersive and realistic banking experience within your RedM roleplay server. This script offers a wide range of features that make it an essential addition to your server.
 
 ## Implemented Features:
