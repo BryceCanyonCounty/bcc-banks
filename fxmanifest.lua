@@ -10,6 +10,7 @@ client_scripts {
    'client/api-loader.lua',
    'client/helpers/*.lua',
    'client/services/*.lua',
+   'client/menus/*.lua',
    'client/main.lua',
 }
 
@@ -27,22 +28,13 @@ shared_scripts {
    'shared/config.lua'
 }
 
-
-ui_page {
-   "ui/shim.html"
-}
-
-files {
-   "ui/shim.html",
-   "ui/js/*.*",
-   "ui/css/*.*",
-   "ui/fonts/*.*",
-   "ui/images/*.*",
-}
-
 dependencies {
    'oxmysql',
 }
 
+files {
+  'ui/*',
+  'ui/images/*',
+}
 
 exports {}

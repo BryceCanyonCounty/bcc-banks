@@ -4,7 +4,7 @@ local tables = {
     query = [[
       CREATE TABLE IF NOT EXISTS `banks` (
       `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-      `name` VARCHAR(255) NOT NULL,
+      `name` VARCHAR(255) NOT NULL UNIQUE,
       `x` decimal(15, 2) NOT NULL,
       `y` decimal(15, 2) NOT NULL,
       `z` decimal(15, 2) NOT NULL,
@@ -126,8 +126,9 @@ local data = {
   {
     name = 'Valentine',
     query = [[
-      INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Valentine', -308.16, 773.77, 118.70, 1.31, -2128054417);
-      ]]
+      INSERT IGNORE INTO `banks` (`name`, `x`, `y`, `z`, `h`, `blip`)
+      VALUES ('Valentine', -308.16, 773.77, 118.70, 1.31, -2128054417);
+    ]]
   },
   -- {
   --   name = 'Blackwater',
