@@ -36,11 +36,11 @@ BccUtils.RPC:Register('Feather:Banks:GetTransactions', function(params, cb, src)
         if type(val) == 'number' then
             local secs = (val > 1e12) and math.floor(val / 1000) or math.floor(val)
             local t = os.date('*t', secs)
-            return string.format('%s/%s/%s %s:%s', pad2(t.day), pad2(t.month), tostring(t.year), pad2(t.hour), pad2(t.min))
+            return pad2(t.day) .. '/' .. pad2(t.month) .. '/' .. tostring(t.year) .. ' ' .. pad2(t.hour) .. ':' .. pad2(t.min)
         elseif type(val) == 'string' then
             local y, m, d, h, mi = string.match(val, '^(%d+)%-(%d+)%-(%d+)%s+(%d+):(%d+)')
             if y then
-                return string.format('%s/%s/%s %s:%s', d, m, y, h, mi)
+                return tostring(d) .. '/' .. tostring(m) .. '/' .. tostring(y) .. ' ' .. tostring(h) .. ':' .. tostring(mi)
             end
             local num = tonumber(val)
             if num then

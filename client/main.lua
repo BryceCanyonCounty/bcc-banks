@@ -1,11 +1,13 @@
 local IsReady = false
 Banks = {}
 
--- DEBUG COMMAND - Needed until CharacterSpawned Event is created
-RegisterCommand('banksReady', function(args, src, rawCommand)
+local IsReady = false
+Banks = {}
+
+RegisterCommand('banksReady', function(src, args, rawCommand)  -- correct param order
     devPrint("DEBUG: Registering command 'banksReady'.")
-    Banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', nil)
-    if Len(Banks) <= 0 then
+    local ok; ok, Banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', {})
+    if not ok or not Banks or #Banks <= 0 then
         error('Unable to retrieve banks!')
         return
     end
@@ -15,14 +17,12 @@ RegisterCommand('banksReady', function(args, src, rawCommand)
     devPrint("DEBUG: Banks are ready and Feather:Banks:Start triggered.")
 end, false)
 
--- DEBUG INIT - Needed until CharacterSpawned Event is created
 CreateThread(function()
-    Wait(2000) -- small delay to let feather-core + RPC init
-
+    Wait(2000)
     devPrint("DEBUG: Initializing banks (auto instead of command).")
 
-    Banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', nil)
-    if not Banks or Len(Banks) <= 0 then
+    local ok; ok, Banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', {})
+    if not ok or not Banks or #Banks <= 0 then
         error('Unable to retrieve banks!')
         return
     end

@@ -178,6 +178,24 @@ BccUtils.RPC:Register('Feather:Banks:ExchangeGoldBars', function(params, cb, src
     if netGold < 0 then netGold = 0 end
     char.addCurrency(1, netGold)
 
-    NotifyClient(src, _U('success_exchanged_goldbars', tostring(count), string.format('%.2f', netGold)), 'success', 4000)
+    local function toFixed(n, decimals)
+        n = tonumber(n) or 0
+        local mult = 10 ^ (decimals or 0)
+        local v = math.floor(n * mult + 0.5) / mult
+        local s = tostring(v)
+        if decimals and decimals > 0 then
+            local dot = string.find(s, '.', 1, true)
+            if not dot then
+                s = s .. '.' .. string.rep('0', decimals)
+            else
+                local places = #s - dot
+                if places < decimals then
+                    s = s .. string.rep('0', decimals - places)
+                end
+            end
+        end
+        return s
+    end
+    NotifyClient(src, _U('success_exchanged_goldbars', tostring(count), toFixed(netGold, 2)), 'success', 4000)
     cb(true, { gold = netGold, fee = feePercent })
 end)

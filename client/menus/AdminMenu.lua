@@ -66,7 +66,7 @@ function OpenAdminBankSelectMenu()
 
     if ok and #banks > 0 then
         for _, bank in ipairs(banks) do
-            local label = string.format('#%s — %s', tostring(bank.id), tostring(bank.name))
+            local label = '#' .. tostring(bank.id) .. ' — ' .. tostring(bank.name)
             Page:RegisterElement('button', { label = label, style = {} }, function()
                 OpenAdminBankHub(bank, Page)
             end)
@@ -85,7 +85,7 @@ end
 function OpenAdminBankHub(bank, Parent)
     local Hub = FeatherBankMenu:RegisterPage('bank:page:admin:bank:' .. tostring(bank.id))
     Hub:RegisterElement('header', { value = _U('admin_header'), slot = 'header' })
-    Hub:RegisterElement('subheader', { value = string.format('%s (#%s)', tostring(bank.name), tostring(bank.id)), slot = 'header' })
+    Hub:RegisterElement('subheader', { value = tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'header' })
     Hub:RegisterElement('line', { slot = 'header', style = {} })
 
     Hub:RegisterElement('button', { label = _U('admin_manage_rates_button'), style = {} }, function()
@@ -134,7 +134,7 @@ function OpenAdminRatesMenu(Parent, bank)
             bankIdValue = data.value
         end)
     else
-        AdminRatesPage:RegisterElement('textdisplay', { value = string.format('Bank: %s (#%s)', tostring(bank.name), tostring(bank.id)), slot = 'content' })
+        AdminRatesPage:RegisterElement('textdisplay', { value = 'Bank: ' .. tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'content' })
     end
     AdminRatesPage:RegisterElement('button', {
         label = _U('admin_get_bank_rate_button'),
@@ -322,7 +322,7 @@ function OpenAdminAccountsMenu(Parent, bank)
             bankIdValue = data.value
         end)
     else
-        AdminAccountsPage:RegisterElement('textdisplay', { value = string.format('Bank: %s (#%s)', tostring(bank.name), tostring(bank.id)), slot = 'content' })
+        AdminAccountsPage:RegisterElement('textdisplay', { value = 'Bank: ' .. tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'content' })
     end
     AdminAccountsPage:RegisterElement('button', {
         label = _U('admin_fetch_button'),
@@ -384,7 +384,7 @@ function OpenAdminLoansMenu(Parent, bank)
             bankIdValue = data.value
         end)
     else
-        AdminLoansPage:RegisterElement('textdisplay', { value = string.format('Bank: %s (#%s)', tostring(bank.name), tostring(bank.id)), slot = 'content' })
+        AdminLoansPage:RegisterElement('textdisplay', { value = 'Bank: ' .. tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'content' })
     end
     AdminLoansPage:RegisterElement('button', {
         label = _U('admin_fetch_button'),
@@ -416,7 +416,11 @@ function OpenAdminLoansMenu(Parent, bank)
         -- Render a simple interactive list
         AdminLoansPage:RegisterElement('line', { slot = 'content', style = {} })
         for _, r in ipairs(rows or {}) do
-            local label = string.format('#%s | %s %s | $%s | %s%% | %s %s', tostring(r.id), _U('admin_table_account'), tostring(r.account_id or '-'), tostring(r.amount), tostring(r.interest), tostring(r.duration), _U('admin_months_short') or 'mo')
+            local label = '#' .. tostring(r.id)
+                .. ' | ' .. _U('admin_table_account') .. ' ' .. tostring(r.account_id or '-')
+                .. ' | $' .. tostring(r.amount)
+                .. ' | ' .. tostring(r.interest) .. '%'
+                .. ' | ' .. tostring(r.duration) .. ' ' .. (_U('admin_months_short') or 'mo')
             AdminLoansPage:RegisterElement('button', {
                 label = label,
                 style = {}
@@ -514,7 +518,7 @@ function OpenAdminSDBsMenu(Parent, bank)
             bankIdValue = data.value
         end)
     else
-        AdminSDBsPage:RegisterElement('textdisplay', { value = string.format('Bank: %s (#%s)', tostring(bank.name), tostring(bank.id)), slot = 'content' })
+        AdminSDBsPage:RegisterElement('textdisplay', { value = 'Bank: ' .. tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'content' })
     end
     AdminSDBsPage:RegisterElement('button', {
         label = _U('admin_fetch_button'),
