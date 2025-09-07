@@ -9,11 +9,26 @@ CreateThread(function()
             `z` DECIMAL(15,2) NOT NULL,
             `h` DECIMAL(15,2) NOT NULL,
             `blip` BIGINT DEFAULT -2128054417,
+            `hours_active` BOOLEAN NOT NULL DEFAULT FALSE,
             `open_hour` INT UNSIGNED NULL,
             `close_hour` INT UNSIGNED NULL,
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
+
+    -- Ensure column exists for existing installations (add if missing)
+    local col = MySQL.query.await([[ 
+        SELECT COUNT(*) AS cnt
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'bcc_banks'
+          AND COLUMN_NAME = 'hours_active'
+    ]])
+    local hasCol = col and col[1] and tonumber(col[1].cnt or 0) or 0
+    if hasCol == 0 then
+        -- Add missing column with default false
+        MySQL.query.await([[ALTER TABLE `bcc_banks` ADD COLUMN `hours_active` BOOLEAN NOT NULL DEFAULT FALSE AFTER `blip`]])
+    end
 
     -- bcc_accounts (no FK to characters)
     MySQL.query.await([[

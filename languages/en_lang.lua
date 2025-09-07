@@ -1,4 +1,9 @@
 Locales["en_lang"] = {
+    bank_label = "Bank",
+    -- Closed prompt wording (match stables/guarma style)
+    hours = " is open from ~o~",
+    to = ":00~q~ to ~o~",
+    hundred = ":00",
     -- OpenUI
     banker_busy_notify = "Banker is currently busy. Please wait.",
     banking_header = "Banking",
@@ -227,6 +232,7 @@ Locales["en_lang"] = {
     admin_view_accounts_button = "View Accounts",
     admin_view_loans_button = "View Loans",
     admin_view_sdbs_button = "View SDBs",
+    admin_manage_hours_button = "Manage Hours",
     admin_rates_header = "Rates",
     admin_rates_subheader = "Bank and character interest",
     admin_bank_id_label = "Bank ID",
@@ -260,6 +266,24 @@ Locales["en_lang"] = {
     admin_fetch_pending_button = "Fetch Pending Loans",
     admin_sdbs_header = "SDBs",
     admin_sdbs_subheader = "List SDBs by bank",
+
+    -- Admin Hours
+    admin_hours_header = "Hours",
+    admin_hours_subheader = "Configure opening hours",
+    admin_fetch_hours_button = "Fetch Hours",
+    admin_open_hour_label = "Open Hour (0-23)",
+    admin_close_hour_label = "Close Hour (0-23)",
+    admin_set_hours_button = "Set Hours",
+    admin_enable_hours_button = "Enable Hours",
+    admin_disable_hours_button = "Disable Hours",
+    admin_hours_active_yes = "Hours Active: Yes",
+    admin_hours_active_no = "Hours Active: No",
+    admin_hours_updated = "Hours updated.",
+    admin_hours_enabled = "Hours enabled.",
+    admin_hours_disabled = "Hours disabled.",
+    admin_invalid_hours_input = "Enter a valid bank and hours.",
+    admin_invalid_hours_toggle = "Enter a valid bank and toggle.",
+    admin_hours_range_error = "Hours must be 0-23.",
 
     -- Server messages (accounts)
     error_character_not_found = "Character not found.",

@@ -44,3 +44,5 @@ CreateThread(function()
     end
   end
 end)
+
+BccUtils.Versioner.checkFile(GetCurrentResourceName(), "https://github.com/BryceCanyonCounty/bcc-banks")

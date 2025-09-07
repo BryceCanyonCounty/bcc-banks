@@ -3,7 +3,17 @@ Config = {
 	defaultlang        = 'ro_lang',
 	Notify             = "feather-menu", ----or use feather-core
 	UseBankerBusy      = true,        -- If enabled only 1 person can use the bank at a time
-	
+
+    -- Admin configuration: choose how admin is determined
+    Admin = {
+        allowConsole  = true,                 -- allow console (src=0)
+        useAce        = false,                -- check ACE permission below
+        acePermission = 'feather.banks.admin',-- ACE permission name
+        command       = 'bankadmin',          -- admin command name
+        groups        = { 'admin', 'superadmin' }, -- VORP group names
+        jobs          = { 'banker' }               -- VORP job names
+    },
+
     adminGroups        = { 
 		'admin', 'superadmin'
     },
@@ -14,7 +24,7 @@ Config = {
 
 	-- https://github.com/femga/rdr3_discoveries/blob/master/Controls/README.md
 	PromptSettings     = {
-		Distance = 3.0,   -- Distance for the prompt to work
+		Distance = 1.0,   -- Distance for the prompt to work
 		TellerKey = 0x760A9C6F, -- Letter G
 		SDBKey = 0x760A9C6F -- Letter G
 	},

@@ -70,22 +70,32 @@ RegisterNetEvent('Feather:Banks:Start', function()
         local playerCords = GetEntityCoords(playerPed)
 
         for _, bank in pairs(Banks) do
-            -- Handle Open/Close Banks
-            if bank.open_hour and bank.close_hour then
+            -- Handle Open/Close Banks (respect hours_active boolean from DB)
+            local hoursActive = (bank.hours_active == 1 or bank.hours_active == true or bank.hours_active == '1')
+            if hoursActive and bank.open_hour and bank.close_hour then
                 local hour = GetClockHours()
                 devPrint("DEBUG: Current hour:", hour)
 
                 if hour >= bank.close_hour or hour < bank.open_hour then
                     bank.isClosed = true
-                    devPrint("DEBUG: Bank", bank.name, "is CLOSED.")
+                    devPrint("DEBUG: Bank", bank.name, "is CLOSED (by hours).")
                 else
                     if bank.isClosed then
                         bank.isClosed = false
                         if bank.blip_handle then
                             SetBlipColor(bank.blip_handle, bank.isClosed)
                         end
-                        devPrint("DEBUG: Bank", bank.name, "is OPEN now.")
+                        devPrint("DEBUG: Bank", bank.name, "is OPEN now (by hours).")
                     end
+                end
+            else
+                -- If hours are not active, ensure bank is considered open
+                if bank.isClosed then
+                    bank.isClosed = false
+                    if bank.blip_handle then
+                        SetBlipColor(bank.blip_handle, bank.isClosed)
+                    end
+                    devPrint("DEBUG: Bank", bank.name, "hours inactive; forcing OPEN.")
                 end
             end
 
@@ -96,7 +106,7 @@ RegisterNetEvent('Feather:Banks:Start', function()
                         SetBlipColor(bank.blip_handle, bank.isClosed)
                         devPrint("DEBUG: Showing closed blip for", bank.name)
                     else
-                        bank.blip_handle.Remove()
+                        RemoveBlip(bank.blip_handle)
                         bank.blip_handle = nil
                         devPrint("DEBUG: Removed closed blip for", bank.name)
                     end
@@ -146,18 +156,26 @@ RegisterNetEvent('Feather:Banks:Start', function()
                 end
             end
 
-            -- Handle NPCs
+            -- Handle NPCs (do not spawn when bank is closed)
             if Config.NPCSettings.Show then
-                if distance <= Config.NPCSettings.Distance then
-                    if not bank.npc then
-                        bank.npc = AddNPC(bank)
-                        --print("DEBUG: Added NPC for bank " .. bank.name)
-                    end
-                else
+                if bank.isClosed then
                     if bank.npc then
                         bank.npc:Remove()
                         bank.npc = nil
-                        --print("DEBUG: Removed NPC for bank " .. bank.name)
+                        devPrint("DEBUG: Ensured NPC removed for closed bank", bank.name)
+                    end
+                else
+                    if distance <= Config.NPCSettings.Distance then
+                        if not bank.npc then
+                            bank.npc = AddNPC(bank)
+                            --print("DEBUG: Added NPC for bank " .. bank.name)
+                        end
+                    else
+                        if bank.npc then
+                            bank.npc:Remove()
+                            bank.npc = nil
+                            --print("DEBUG: Removed NPC for bank " .. bank.name)
+                        end
                     end
                 end
             end
@@ -166,9 +184,16 @@ RegisterNetEvent('Feather:Banks:Start', function()
             if distance <= Config.PromptSettings.Distance then
                 sleep = false
                 if bank.isClosed then
-                    GetClosedPromptGroup():ShowGroup(bank.name .. '  ~o~: ~e~CLOSED')
-                    devPrint("DEBUG: Showing closed prompt for bank", bank.name)
+                    -- Disable open prompt and show a closed message with opening hours like stables/guarma
+                    if GetOpenPrompt() then GetOpenPrompt():EnabledPrompt(false) end
+                    local openTxt = tostring(bank.open_hour or '')
+                    local closeTxt = tostring(bank.close_hour or '')
+                    local label = ( _U('bank_label') or 'Bank') .. (_U('hours') or ' is open from ~o~') .. openTxt .. (_U('to') or ':00~q~ to ~o~') .. closeTxt .. (_U('hundred') or ':00')
+                    GetClosedPromptGroup():ShowGroup(label)
+                    devPrint("DEBUG: Showing closed prompt for bank", bank.name, 'hours', openTxt, closeTxt)
                 else
+                    -- Re-enable open prompt when bank is open
+                    if GetOpenPrompt() then GetOpenPrompt():EnabledPrompt(true) end
                     GetOpenPromptGroup():ShowGroup(bank.name)
                     if GetOpenPrompt():HasCompleted() then
                         OpenUI(bank)
@@ -202,4 +227,14 @@ AddEventHandler('onResourceStop', function(resourceName)
 
     devPrint("DEBUG: Resource", resourceName, "stopped. Cleaning up.")
     CleanUp()
+end)
+
+-- Server-triggered refresh after admin changes (hours etc.)
+RegisterNetEvent('Feather:Banks:Refresh', function()
+    devPrint("DEBUG: Refresh event received; reloading banks.")
+    local ok; ok, Banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', {})
+    if not ok or not Banks then
+        devPrint("DEBUG: Refresh failed to load banks.")
+        return
+    end
 end)

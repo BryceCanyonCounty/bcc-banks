@@ -2,52 +2,52 @@
 
 local function IsBankAdmin(src)
     devPrint('[ADMIN] IsBankAdmin called. src=', src)
-    if src == 0 then
+
+    local AdminCfg = (Config and Config.Admin) or {}
+    local allowConsole = (AdminCfg.allowConsole ~= false) -- default true
+    local useAce = (AdminCfg.useAce == true)
+    local acePerm = AdminCfg.acePermission or 'feather.banks.admin'
+    local groups = AdminCfg.groups or Config.adminGroups or {}
+    local jobs = AdminCfg.jobs or Config.AllowedJobs or {}
+
+    if src == 0 and allowConsole then
         devPrint('[ADMIN] Granting admin: source is console (0)')
         return true
     end
-    -- Uncomment to enable ACE check; logs the result too
-    -- if IsPlayerAceAllowed then
-    --     local ace = IsPlayerAceAllowed(src, 'feather.banks.admin')
-    --     devPrint('[ADMIN] ACE check feather.banks.admin =', ace and 'true' or 'false')
-    --     if ace then return true end
-    -- end
+
+    if useAce and IsPlayerAceAllowed then
+        local ace = IsPlayerAceAllowed(src, acePerm)
+        devPrint('[ADMIN] ACE check', acePerm, '=', ace and 'true' or 'false')
+        if ace then return true end
+    end
 
     local user = VORPcore.getUser(src)
-    if not user then
-        devPrint('[ADMIN] Deny: VORP user not found for src', src)
-        return false
-    end
-    if not user.getUsedCharacter then
-        devPrint('[ADMIN] Deny: getUsedCharacter missing on user for src', src)
+    if not user or not user.getUsedCharacter then
+        devPrint('[ADMIN] Deny: VORP user/character not found for src', src)
         return false
     end
     local character = user.getUsedCharacter
-    if not character then
-        devPrint('[ADMIN] Deny: character not found for src', src)
-        return false
-    end
 
     devPrint('[ADMIN] Character group=', tostring(character.group), 'job=', tostring(character.job), 'charId=', tostring(character.charIdentifier))
-    devPrint('[ADMIN] Config.adminGroups=', json.encode(Config.adminGroups or {}), 'AllowedJobs=', json.encode(Config.AllowedJobs or {}))
+    devPrint('[ADMIN] Admin groups=', json.encode(groups), 'jobs=', json.encode(jobs))
 
-    -- Check VORP group against configured admin groups
-    for _, group in ipairs(Config.adminGroups or {}) do
+    -- Group check
+    for _, group in ipairs(groups) do
         if character.group == group then
             devPrint('[ADMIN] Granting admin by group match:', group)
             return true
         end
     end
 
-    -- Check VORP job against allowed jobs
-    for _, job in ipairs(Config.AllowedJobs or {}) do
+    -- Job check
+    for _, job in ipairs(jobs) do
         if character.job == job then
             devPrint('[ADMIN] Granting admin by job match:', job)
             return true
         end
     end
 
-    devPrint('[ADMIN] Deny: no matching group/job; consider ACE or legacy role checks')
+    devPrint('[ADMIN] Deny: no matching ACE/group/job')
     return false
 end
 
@@ -325,3 +325,80 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListSDBs', function(params, cb, src)
 end)
 
 -- Legacy admin commands were removed in favor of the /bankadmin UI.
+
+-- Admin: Get/Set bank opening hours
+BccUtils.RPC:Register('Feather:Banks:Admin:GetHours', function(params, cb, src)
+    if not IsBankAdmin(src) then
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+    local bankId = tonumber(params and params.bank)
+    if not bankId then
+        NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
+        cb(false)
+        return
+    end
+    local row = MySQL.query.await('SELECT hours_active, open_hour, close_hour FROM `bcc_banks` WHERE id = ? LIMIT 1', { bankId })
+    local data = row and row[1]
+    if not data then
+        cb(true, { hours_active = false, open_hour = nil, close_hour = nil })
+        return
+    end
+    cb(true, { hours_active = (data.hours_active == 1 or data.hours_active == true), open_hour = data.open_hour, close_hour = data.close_hour })
+end)
+
+BccUtils.RPC:Register('Feather:Banks:Admin:SetHours', function(params, cb, src)
+    if not IsBankAdmin(src) then
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+    local bankId = tonumber(params and params.bank)
+    local active = params and params.active
+    local openH = tonumber(params and params.open)
+    local closeH = tonumber(params and params.close)
+    if not bankId or openH == nil or closeH == nil then
+        NotifyClient(src, _U('admin_invalid_hours_input') or 'Enter valid bank id and hours.', 'error', 3500)
+        cb(false)
+        return
+    end
+    if openH < 0 or openH > 23 or closeH < 0 or closeH > 23 then
+        NotifyClient(src, _U('admin_hours_range_error') or 'Hours must be 0-23.', 'error', 3500)
+        cb(false)
+        return
+    end
+    local actv
+    if type(active) == 'boolean' then
+        actv = active and 1 or 0
+    elseif type(active) == 'number' then
+        actv = (active ~= 0) and 1 or 0
+    else
+        -- Keep current when not provided: fetch existing
+        local row = MySQL.query.await('SELECT hours_active FROM `bcc_banks` WHERE id = ? LIMIT 1', { bankId })
+        actv = (row and row[1] and (row[1].hours_active == 1 or row[1].hours_active == true)) and 1 or 0
+    end
+    MySQL.query.await('UPDATE `bcc_banks` SET hours_active = ?, open_hour = ?, close_hour = ? WHERE id = ?', { actv, openH, closeH, bankId })
+    -- Notify all clients to refresh bank data
+    TriggerClientEvent('Feather:Banks:Refresh', -1)
+    cb(true)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:Admin:ToggleHours', function(params, cb, src)
+    if not IsBankAdmin(src) then
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+    local bankId = tonumber(params and params.bank)
+    local active = params and params.active
+    if not bankId or type(active) ~= 'boolean' then
+        NotifyClient(src, _U('admin_invalid_hours_toggle') or 'Enter valid bank id and toggle.', 'error', 3500)
+        cb(false)
+        return
+    end
+    local actv = active and 1 or 0
+    MySQL.query.await('UPDATE `bcc_banks` SET hours_active = ? WHERE id = ?', { actv, bankId })
+    TriggerClientEvent('Feather:Banks:Refresh', -1)
+    cb(true)
+end)

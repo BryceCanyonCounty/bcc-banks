@@ -20,9 +20,9 @@ local function toFixed(n, decimals)
 end
 
 function OpenBankAdminMenu()
-    local ok, allowed = BccUtils.RPC:CallAsync('Feather:Banks:CheckAdmin', {})
+    local ok, allowed = BccUtils.RPC:CallAsync("Feather:Banks:CheckAdmin", {})
     if not ok or not allowed then
-        Notify(_U('admin_no_permission'), 'error', 3500)
+        Notify(_U("admin_no_permission"), "error", 3500)
         return
     end
 
@@ -31,82 +31,243 @@ end
 
 -- 1) Select a bank first
 function OpenAdminBankSelectMenu()
-    local Page = FeatherBankMenu:RegisterPage('bank:page:admin:banks')
-    Page:RegisterElement('header', { value = _U('admin_header'), slot = 'header' })
-    Page:RegisterElement('subheader', { value = _U('admin_subheader'), slot = 'header' })
-    Page:RegisterElement('line', { slot = 'header', style = {} })
+    local Page = FeatherBankMenu:RegisterPage("bank:page:admin:banks")
 
-    local ok, banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', {})
+    Page:RegisterElement("header", {
+        value = _U("admin_header"),
+        slot  = "header"
+    })
+    Page:RegisterElement("subheader", {
+        value = _U("admin_subheader"),
+        slot  = "header"
+    })
+    Page:RegisterElement("line", {
+        slot  = "header",
+        style = {}
+    })
+
+    local ok, banks = BccUtils.RPC:CallAsync("Feather:Banks:GetBanks", {})
     banks = banks or {}
     if not ok or #banks == 0 then
-        Page:RegisterElement('textdisplay', { value = 'No banks found.', slot = 'content' })
+        Page:RegisterElement("textdisplay", {
+            value = "No banks found.",
+            slot  = "content"
+        })
     end
+
     -- Always allow creating a bank from here
-    Page:RegisterElement('button', { label = 'Create Bank At Your Location', style = {} }, function()
-        local CreatePage = FeatherBankMenu:RegisterPage('bank:page:admin:banks:create')
-        CreatePage:RegisterElement('header', { value = 'Create Bank', slot = 'header' })
-        CreatePage:RegisterElement('line', { slot = 'header', style = {} })
-        local nameValue = ''
-        CreatePage:RegisterElement('input', { label = 'Bank Name', placeholder = 'Enter bank name', style = {} }, function(data)
+    Page:RegisterElement("button", {
+        label = "Create Bank At Your Location",
+        style = {}
+    }, function()
+        local CreatePage = FeatherBankMenu:RegisterPage("bank:page:admin:banks:create")
+        CreatePage:RegisterElement("header", {
+            value = "Create Bank",
+            slot  = "header"
+        })
+        CreatePage:RegisterElement("line", {
+            slot  = "header",
+            style = {}
+        })
+        local nameValue = ""
+        CreatePage:RegisterElement("input", {
+            label       = "Bank Name",
+            placeholder = "Enter bank name",
+            style       = {}
+        }, function(data)
             nameValue = data.value
         end)
-        CreatePage:RegisterElement('button', { label = _U('confirm_button'), style = {} }, function()
-            local okC = BccUtils.RPC:CallAsync('Feather:Banks:CreateBank', { name = nameValue })
+        CreatePage:RegisterElement("button", {
+            label = _U("confirm_button"),
+            style = {}
+        }, function()
+            local okC = BccUtils.RPC:CallAsync("Feather:Banks:CreateBank", { name = nameValue })
             if okC then
                 OpenAdminBankSelectMenu()
             end
         end)
-        CreatePage:RegisterElement('line', { slot = 'footer', style = {} })
-        CreatePage:RegisterElement('button', { label = _U('back_button'), slot = 'footer', style = {} }, function()
+        CreatePage:RegisterElement("line", {
+            slot  = "footer",
+            style = {}
+        })
+        CreatePage:RegisterElement("button", {
+            label = _U("back_button"),
+            slot  = "footer",
+            style = {}
+        }, function()
             OpenAdminBankSelectMenu()
         end)
-        CreatePage:RegisterElement('bottomline', { slot = 'footer', style = {} })
+        CreatePage:RegisterElement("bottomline", {
+            slot  = "footer",
+            style = {}
+        })
         FeatherBankMenu:Open({ startupPage = CreatePage })
     end)
 
     if ok and #banks > 0 then
         for _, bank in ipairs(banks) do
-            local label = '#' .. tostring(bank.id) .. ' — ' .. tostring(bank.name)
-            Page:RegisterElement('button', { label = label, style = {} }, function()
+            local label = "#" .. tostring(bank.id) .. " — " .. tostring(bank.name)
+            Page:RegisterElement("button", {
+                label = label,
+                style = {}
+            }, function()
                 OpenAdminBankHub(bank, Page)
             end)
         end
     end
 
-    Page:RegisterElement('line', { slot = 'footer', style = {} })
-    Page:RegisterElement('button', { label = _U('back_button'), slot = 'footer', style = {} }, function()
+    Page:RegisterElement("line", {
+        slot  = "footer",
+        style = {}
+    })
+    Page:RegisterElement("button", {
+        label = _U("back_button"),
+        slot  = "footer",
+        style = {}
+    }, function()
         FeatherBankMenu:Close()
     end)
-    Page:RegisterElement('bottomline', { slot = 'footer', style = {} })
+    Page:RegisterElement("bottomline", {
+        slot  = "footer",
+        style = {}
+    })
     FeatherBankMenu:Open({ startupPage = Page })
 end
 
 -- 2) Per-bank admin hub with actions
 function OpenAdminBankHub(bank, Parent)
-    local Hub = FeatherBankMenu:RegisterPage('bank:page:admin:bank:' .. tostring(bank.id))
-    Hub:RegisterElement('header', { value = _U('admin_header'), slot = 'header' })
-    Hub:RegisterElement('subheader', { value = tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'header' })
-    Hub:RegisterElement('line', { slot = 'header', style = {} })
+    local Hub = FeatherBankMenu:RegisterPage("bank:page:admin:bank:" .. tostring(bank.id))
 
-    Hub:RegisterElement('button', { label = _U('admin_manage_rates_button'), style = {} }, function()
+    Hub:RegisterElement("header", {
+        value = _U("admin_header"),
+        slot  = "header"
+    })
+    Hub:RegisterElement("subheader", {
+        value = tostring(bank.name) .. " (#" .. tostring(bank.id) .. ")",
+        slot  = "header"
+    })
+    Hub:RegisterElement("line", {
+        slot  = "header",
+        style = {}
+    })
+
+    Hub:RegisterElement("button", {
+        label = _U("admin_manage_rates_button"),
+        style = {}
+    }, function()
         OpenAdminRatesMenu(Hub, bank)
     end)
-    Hub:RegisterElement('button', { label = _U('admin_view_accounts_button'), style = {} }, function()
+    Hub:RegisterElement("button", {
+        label = _U("admin_view_accounts_button"),
+        style = {}
+    }, function()
         OpenAdminAccountsMenu(Hub, bank)
     end)
-    Hub:RegisterElement('button', { label = _U('admin_view_loans_button'), style = {} }, function()
+    Hub:RegisterElement("button", {
+        label = _U("admin_view_loans_button"),
+        style = {}
+    }, function()
         OpenAdminLoansMenu(Hub, bank)
     end)
-    Hub:RegisterElement('button', { label = _U('admin_view_sdbs_button'), style = {} }, function()
+    Hub:RegisterElement("button", {
+        label = _U("admin_view_sdbs_button"),
+        style = {}
+    }, function()
         OpenAdminSDBsMenu(Hub, bank)
     end)
+    Hub:RegisterElement("button", {
+        label = _U("admin_manage_hours_button") or "Manage Hours",
+        style = {}
+    }, function()
+        OpenAdminHoursMenu(Hub, bank)
+    end)
 
-    Hub:RegisterElement('line', { slot = 'footer', style = {} })
-    Hub:RegisterElement('button', { label = _U('back_button'), slot = 'footer', style = {} }, function()
+    Hub:RegisterElement("line", {
+        slot  = "footer",
+        style = {}
+    })
+    Hub:RegisterElement("button", {
+        label = _U("back_button"),
+        slot  = "footer",
+        style = {}
+    }, function()
         Parent:RouteTo()
     end)
-    Hub:RegisterElement('bottomline', { slot = 'footer', style = {} })
+    Hub:RegisterElement("bottomline", {
+        slot  = "footer",
+        style = {}
+    })
     FeatherBankMenu:Open({ startupPage = Hub })
+end
+
+function OpenAdminHoursMenu(Parent, bank)
+    local Page = FeatherBankMenu:RegisterPage('bank:page:admin:hours')
+    Page:RegisterElement('header', { value = _U('admin_hours_header') or 'Hours', slot = 'header' })
+    Page:RegisterElement('subheader', { value = _U('admin_hours_subheader') or 'Configure opening hours', slot = 'header' })
+    Page:RegisterElement('line', { slot = 'header', style = {} })
+
+    local bankIdValue = bank and tostring(bank.id) or ''
+    local openVal, closeVal = '', ''
+    local hoursActive = false
+
+    if not bank then
+        Page:RegisterElement('input', { label = _U('admin_bank_id_label'), placeholder = _U('admin_bank_id_placeholder'), style = {} }, function(data)
+            bankIdValue = data.value
+        end)
+    else
+        Page:RegisterElement('textdisplay', { value = 'Bank: ' .. tostring(bank.name) .. ' (#' .. tostring(bank.id) .. ')', slot = 'content' })
+    end
+
+    -- Prefetch hours (no fetch button)
+    do
+        local bankId = tonumber(bankIdValue) or (bank and tonumber(bank.id))
+        if bankId then
+            local ok, data = BccUtils.RPC:CallAsync('Feather:Banks:Admin:GetHours', { bank = bankId })
+            if ok and data then
+                hoursActive = data.hours_active and true or false
+                openVal = tostring(data.open_hour or '')
+                closeVal = tostring(data.close_hour or '')
+                local status = hoursActive and (_U('admin_hours_active_yes') or 'Hours Active: Yes') or (_U('admin_hours_active_no') or 'Hours Active: No')
+                local info = string.format('%s | Open: %s | Close: %s', status, openVal ~= '' and openVal or '—', closeVal ~= '' and closeVal or '—')
+                Page:RegisterElement('textdisplay', { value = info, slot = 'content' })
+            end
+        end
+    end
+
+    -- Toggle for hours active
+    Page:RegisterElement('toggle', {
+        label = _U('admin_manage_hours_button') or 'Manage Hours',
+        start = hoursActive,
+        slot = 'content',
+    }, function(data)
+        local bankId = tonumber(bankIdValue) or (bank and tonumber(bank.id))
+        if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
+        local ok = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ToggleHours', { bank = bankId, active = data.value and true or false })
+        Notify(ok and (data.value and (_U('admin_hours_enabled') or 'Hours enabled.') or (_U('admin_hours_disabled') or 'Hours disabled.')) or _U('admin_action_failed'), ok and 'success' or 'error', 3500)
+    end)
+
+    -- Inputs for open/close with placeholders showing current
+    Page:RegisterElement('input', { label = _U('admin_open_hour_label') or 'Open Hour (0-23)', placeholder = (openVal ~= '' and openVal or '7'), style = {} }, function(data)
+        openVal = data.value
+    end)
+    Page:RegisterElement('input', { label = _U('admin_close_hour_label') or 'Close Hour (0-23)', placeholder = (closeVal ~= '' and closeVal or '21'), style = {} }, function(data)
+        closeVal = data.value
+    end)
+    Page:RegisterElement('button', { label = _U('admin_set_hours_button') or 'Set Hours', style = {} }, function()
+        local bankId = tonumber(bankIdValue) or (bank and tonumber(bank.id))
+        local openH = tonumber(openVal)
+        local closeH = tonumber(closeVal)
+        if not bankId or openH == nil or closeH == nil then Notify(_U('admin_invalid_hours_input') or 'Enter valid bank/hours', 3000) return end
+        local ok = BccUtils.RPC:CallAsync('Feather:Banks:Admin:SetHours', { bank = bankId, open = openH, close = closeH })
+        Notify(ok and (_U('admin_hours_updated') or 'Hours updated.') or _U('admin_action_failed'), ok and 'success' or 'error', 3500)
+    end)
+
+    Page:RegisterElement('line', { slot = 'footer', style = {} })
+    Page:RegisterElement('button', { label = _U('back_button'), slot = 'footer', style = {} }, function()
+        Parent:RouteTo()
+    end)
+    Page:RegisterElement('bottomline', { slot = 'footer', style = {} })
+    FeatherBankMenu:Open({ startupPage = Page })
 end
 
 function OpenAdminRatesMenu(Parent, bank)
@@ -549,6 +710,7 @@ function OpenAdminSDBsMenu(Parent, bank)
 end
 
 -- Single command to open the admin menus
-RegisterCommand('bankadmin', function()
+local adminCmd = (Config and Config.Admin and Config.Admin.command) or "bankadmin"
+RegisterCommand(adminCmd, function()
     OpenBankAdminMenu()
 end, false)

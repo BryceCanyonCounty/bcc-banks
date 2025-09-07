@@ -1,4 +1,9 @@
 Locales["ro_lang"] = {
+    bank_label = "Banca",
+    -- Closed prompt wording (match stables/guarma style)
+    hours = " este deschisa de la ~o~",
+    to = ":00~q~ pana la ~o~",
+    hundred = ":00",
     -- OpenUI
     banker_busy_notify = "Casierul bancii e ocupat acum. Asteapta putin.",
     banking_header = "Banca",
@@ -236,6 +241,7 @@ Locales["ro_lang"] = {
     admin_view_accounts_button = "Vezi conturile",
     admin_view_loans_button = "Vezi imprumuturile",
     admin_view_sdbs_button = "Vezi seifurile",
+    admin_manage_hours_button = "Gestioneaza programul",
     admin_rates_header = "Dobanzi",
     admin_rates_subheader = "Dobanzi pe banca si pe caracter",
     admin_bank_id_label = "ID banca",
@@ -274,6 +280,23 @@ Locales["ro_lang"] = {
     admin_loans_subheader = "Listeaza imprumuturile pe banca",
     admin_sdbs_header = "Seifuri",
     admin_sdbs_subheader = "Listeaza seifurile pe banca",
+    -- Admin program (ore)
+    admin_hours_header = "Program",
+    admin_hours_subheader = "Configureaza orele de functionare",
+    admin_fetch_hours_button = "Obtine programul",
+    admin_open_hour_label = "Ora deschidere (0-23)",
+    admin_close_hour_label = "Ora inchidere (0-23)",
+    admin_set_hours_button = "Seteaza orele",
+    admin_enable_hours_button = "Activeaza programul",
+    admin_disable_hours_button = "Dezactiveaza programul",
+    admin_hours_active_yes = "Program activ: Da",
+    admin_hours_active_no = "Program activ: Nu",
+    admin_hours_updated = "Program actualizat.",
+    admin_hours_enabled = "Program activat.",
+    admin_hours_disabled = "Program dezactivat.",
+    admin_invalid_hours_input = "Introdu un ID banca si ore valide.",
+    admin_invalid_hours_toggle = "Introdu un ID banca si o stare valida.",
+    admin_hours_range_error = "Orele trebuie sa fie intre 0 si 23.",
 
     -- Server messages (accounts)
     error_character_not_found = "Caracterul nu a fost gasit.",

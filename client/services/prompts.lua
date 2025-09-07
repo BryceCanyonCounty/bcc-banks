@@ -1,7 +1,7 @@
 local OpenGroup = BccUtils.Prompt:SetupPromptGroup()
 local OpenPrompt = nil
 local ClosedGroup = BccUtils.Prompt:SetupPromptGroup()
-local ClosePrompt = nil
+local ClosedPrompt = nil
 
 function GetOpenPromptGroup()
   return OpenGroup
@@ -23,7 +23,7 @@ function BankOpen()
 end
 
 function BankClosed()
-  if not ClosePrompt then
+  if not ClosedPrompt then
     ClosedPrompt = ClosedGroup:RegisterPrompt('Menu', Config.PromptSettings.TellerKey, 0, 1, false, 'hold',
       { timedeventhash = "SHORT_TIMED_EVENT" })
   end
