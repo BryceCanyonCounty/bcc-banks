@@ -1,15 +1,23 @@
 Config = {
 	devMode            = true,
+	defaultlang        = 'ro_lang',
 	Notify             = "feather-menu", ----or use feather-core
-	UseBankerBusy      = true, -- If enabled only 1 person can use the bank at a time
+	UseBankerBusy      = true,        -- If enabled only 1 person can use the bank at a time
+	
+    adminGroups        = { 
+		'admin', 'superadmin'
+    },
+
+    AllowedJobs        = {
+		'banker'
+    },
 
 	-- https://github.com/femga/rdr3_discoveries/blob/master/Controls/README.md
 	PromptSettings     = {
-		Distance = 3.0,     -- Distance for the prompt to work
+		Distance = 3.0,   -- Distance for the prompt to work
 		TellerKey = 0x760A9C6F, -- Letter G
 		SDBKey = 0x760A9C6F -- Letter G
 	},
-
 	-- NPC Options
 	-- Models: https://github.com/femga/rdr3_discoveries/blob/master/peds/peds_list.lua
 	NPCSettings        = {
@@ -67,10 +75,29 @@ Config = {
 
 	-- Access Level Options
 	AccessLevels       = {
-		Admin = 1,        -- Can grant access to other people
+		Admin = 1,      -- Can grant access to other people
 		Withdraw_Deposit = 2, -- Can Withdraw and Deposit Funds
-		Deposit = 3,      -- Can Only Deposit
-		ReadOnly = 4,     -- Can Only See balances
+		Deposit = 3,    -- Can Only Deposit
+		ReadOnly = 4,   -- Can Only See balances
+	},
+
+	-- Gold Exchange Options
+	GoldExchange       = {
+		Enabled          = true,
+		-- Dollar price per 1.00 gold unit
+		BuyPricePerGold  = 10.0,
+		SellPricePerGold = 9.0,
+		-- Inventory item -> gold currency exchange
+		GoldBarItemName  = 'goldbar',   -- item name in inventory
+		GoldBarToGold    = 1.0,         -- how much gold currency per 1 goldbar item
+		GoldBarFeePercent = 5.0,        -- fee percent taken when exchanging gold bars to gold
+	},
+
+	-- Transfers
+	Transfer           = {
+		Enabled = true,
+		-- Applies only when source and destination banks differ
+		CrossBankFeePercent = 2.0, -- small configurable fee percentage
 	},
 
 	-- Bank Account Options
@@ -87,7 +114,7 @@ Config = {
 			Small = {
 				CashPrice       = 100,
 				GoldPrice       = 1,
-				MaxWeight       = 3,
+				MaxWeight       = 100,
 				IgnoreItemLimit = true, -- Ignore max quantity of items
 				BlacklistItems  = { -- List of item names from the Database (case sensitive)
 					'apple'
@@ -95,15 +122,15 @@ Config = {
 			},
 			Medium = {
 				CashPrice       = 500,
-				GoldPrice       = 50,
-				MaxWeight       = 6,
+				GoldPrice       = 5,
+				MaxWeight       = 500,
 				IgnoreItemLimit = true, -- Ignore max quantity of items
 				BlacklistItems  = {}
 			},
 			Large = {
 				CashPrice = 1500,
-				GoldPrice = 150,
-				MaxWeight = 15,
+				GoldPrice = 15,
+				MaxWeight = 1500,
 				IgnoreItemLimit = true, -- Ignore max quantity of items
 				BlacklistItems = {}
 			},

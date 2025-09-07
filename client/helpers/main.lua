@@ -1,3 +1,5 @@
+BccUtils = exports["bcc-utils"].initiate()
+
 function LoadModel(model)
   RequestModel(model)
   while not HasModelLoaded(model) do
@@ -32,15 +34,15 @@ function Notify(message, typeOrDuration, maybeDuration)
             toastStyle = {},
             progressStyle = {}
         })
-    elseif Config.Notify == "feather-core" then
+    elseif Config.Notify == "vorp_core" then
         -- Only message and duration supported
-        Feather.Notify.Notify(message, notifyDuration)
+        Notify(message, notifyDuration)
     else
-        print("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
+        devPrint("[Notify] Invalid Config.Notify:", tostring(Config.Notify))
     end
 end
 
-Feather.RPC.Register("feather-banks:NotifyClient", function(data)
+BccUtils.RPC:Register("feather-banks:NotifyClient", function(data)
     Notify(data.message, data.type, data.duration)
 end)
 

@@ -1,6 +1,6 @@
-local OpenGroup = Feather.Prompt:SetupPromptGroup()
+local OpenGroup = BccUtils.Prompt:SetupPromptGroup()
 local OpenPrompt = nil
-local ClosedGroup = Feather.Prompt:SetupPromptGroup()
+local ClosedGroup = BccUtils.Prompt:SetupPromptGroup()
 local ClosePrompt = nil
 
 function GetOpenPromptGroup()

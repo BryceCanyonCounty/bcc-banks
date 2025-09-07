@@ -1,0 +1,310 @@
+BccUtils.RPC:Register('Feather:Banks:GetLoans', function(params, cb, src)
+    devPrint('GetLoans RPC called. src=', src, 'params=', params)
+
+    local account_id = tonumber(params and params.account)
+    local bank_id    = tonumber(params and params.bank)
+
+    local user = VORPcore.getUser(src)
+    if not user then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local characterId = char.charIdentifier
+    if not characterId then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local list
+    if account_id then
+        if not (HasAccountAccess(account_id, characterId) or IsAccountOwner(account_id, characterId)) then
+            NotifyClient(src, _U('error_insufficient_access'), 'error', 4000)
+            cb(false)
+            return
+        end
+        list = GetLoansForAccount(account_id)
+    elseif bank_id then
+        list = GetLoansForCharacterBank(characterId, bank_id)
+    else
+        NotifyClient(src, _U('error_invalid_bank') or 'Invalid bank.', 'error', 4000)
+        cb(false)
+        return
+    end
+    cb(true, list)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:GetLoan', function(params, cb, src)
+    local loan_id = tonumber(params and params.loan)
+    if not loan_id then
+        NotifyClient(src, _U('error_invalid_loan_id'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local info = ComputeLoanOutstanding(loan_id)
+    if not info then
+        NotifyClient(src, _U('error_loan_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    cb(true, info)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:ClaimLoanDisbursement', function(params, cb, src)
+    local user = VORPcore.getUser(src)
+    if not user then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char or not char.charIdentifier then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local characterId = char.charIdentifier
+
+    local loan_id    = tonumber(params and params.loan)
+    local account_id = tonumber(params and params.account)
+    if not loan_id or not account_id then
+        NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local res = ClaimLoanToAccount(loan_id, account_id, characterId)
+    if not res or res.status == false then
+        NotifyClient(src, (res and res.message) or _U('error_unable_create_loan'), 'error', 4000)
+        cb(false)
+        return
+    end
+    NotifyClient(src, _U('success_loan_disbursed') or 'Loan funds transferred to account.', 'success', 4000)
+    cb(true, res.loan)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:CreateLoan', function(params, cb, src)
+    devPrint('CreateLoan RPC called. src=', src, 'params=', params)
+
+    local user = VORPcore.getUser(src)
+    if not user then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local characterId = char.charIdentifier
+    if not characterId then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local account_id = tonumber(params and params.account)
+    local bankId     = tonumber(params and params.bank)
+    local amount     = tonumber(params and params.amount)
+    local duration   = tonumber(params and params.duration) or 0
+
+    if (not account_id and not bankId) or not amount or amount <= 0 then
+        NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Derive bank from account if provided; otherwise require bankId
+    if account_id then
+        bankId = bankId or GetBankIdForAccount(account_id)
+        if not (IsAccountOwner(account_id, characterId) or IsAccountAdmin(account_id, characterId)) then
+            NotifyClient(src, _U('error_insufficient_access'), 'error', 4000)
+            cb(false)
+            return
+        end
+    elseif not bankId then
+        NotifyClient(src, _U('error_invalid_bank') or 'Invalid bank.', 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Compute interest server-side for this character (and bank)
+    local interest = GetCharacterLoanInterest(characterId, bankId)
+    local res = CreateLoan(account_id, characterId, amount, interest, duration, bankId)
+    if not res or res.status == false then
+        NotifyClient(src, res and res.message or _U('error_unable_create_loan'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Inform user that the loan application is pending approval
+    NotifyClient(src, _U('success_loan_created') or 'Loan application submitted for approval.', 'success', 4000)
+    cb(true, res.loan)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:GetLoanRate', function(params, cb, src)
+    local user = VORPcore.getUser(src)
+    if not user then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local characterId = char.charIdentifier
+    if not characterId then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local account_id = tonumber(params and params.account)
+    local bankId = account_id and GetBankIdForAccount(account_id) or tonumber(params and params.bank)
+    local rate = GetCharacterLoanInterest(characterId, bankId)
+    cb(true, rate)
+end)
+
+-- Background: track in-game days passed and enforce defaults -> freeze accounts
+CreateThread(function()
+    while true do
+        Wait(60000) -- check roughly once per real minute
+        local curDay = 0
+        if exports and exports.weathersync and exports.weathersync.getTime then
+            local t = exports.weathersync:getTime() or {}
+            curDay = tonumber(t.day) or 0
+        end
+
+        -- Fetch approved, non-defaulted loans
+        local loans = MySQL.query.await('SELECT id, character_id, last_game_day, game_days_elapsed, due_game_days, status FROM `bcc_loans` WHERE `status` = "approved" AND `is_defaulted` = 0') or {}
+        for _, ln in ipairs(loans) do
+            local last = tonumber(ln.last_game_day or curDay)
+            local elapsed = tonumber(ln.game_days_elapsed or 0)
+            local due = tonumber(ln.due_game_days or 0)
+            if last ~= curDay then
+                local delta = (curDay - last) % 7
+                local newElapsed = elapsed + delta
+                MySQL.query.await('UPDATE `bcc_loans` SET `game_days_elapsed` = ?, `last_game_day` = ? WHERE `id` = ?', { newElapsed, curDay, ln.id })
+
+                -- Check default condition
+                if due and due > 0 and newElapsed >= due then
+                    -- Compute outstanding
+                    local info = ComputeLoanOutstanding(ln.id)
+                    if info and (info.outstanding or 0) > 0 then
+                        -- Mark defaulted and freeze all accounts for owner
+                        MySQL.query.await('UPDATE `bcc_loans` SET `is_defaulted` = 1, `status` = "defaulted" WHERE `id` = ?', { ln.id })
+                        SetOwnerAccountsFrozen(tonumber(ln.character_id), true)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
+    devPrint('RepayLoan RPC called. src=', src, 'params=', params)
+
+    local user = VORPcore.getUser(src)
+    if not user then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local characterId = char.charIdentifier
+    if not characterId then
+        NotifyClient(src, _U('error_character_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local loan_id   = tonumber(params and params.loan)
+    local amount    = tonumber(params and params.amount)
+
+    if not loan_id or not amount or amount <= 0 then
+        NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Prevent repayment of loans that are not approved yet
+    local loanRow = GetLoan(loan_id)
+    if not loanRow then
+        NotifyClient(src, _U('error_loan_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local status = tostring(loanRow.status)
+    if status == 'paid' then
+        NotifyClient(src, _U('error_loan_already_paid') or 'Loan already fully repaid.', 'success', 4000)
+        cb(false)
+        return
+    elseif status ~= 'approved' then
+        NotifyClient(src, _U('error_loan_not_approved') or 'Loan has not been approved yet.', 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Check current outstanding and prevent over/extra payments
+    local info = ComputeLoanOutstanding(loan_id)
+    if info and info.outstanding then
+        if info.outstanding <= 0 then
+            NotifyClient(src, _U('error_loan_already_paid') or 'Loan already fully repaid.', 'success', 4000)
+            cb(false)
+            return
+        end
+        if amount > info.outstanding then
+            amount = info.outstanding
+        end
+    end
+
+    if not amount or amount <= 0 then
+        NotifyClient(src, _U('invalid_repay_amount') or 'Enter a valid repayment amount.', 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Ensure the loan belongs to this character
+    if tonumber(loanRow.character_id) ~= tonumber(characterId) then
+        NotifyClient(src, _U('error_no_permission') or 'No permission.', 'error', 4000)
+        cb(false)
+        return
+    end
+
+    -- Check player has enough cash and remove it
+    local currentDollars = tonumber(char.money) or 0
+    if currentDollars < amount then
+        NotifyClient(src, _U('error_not_enough_cash', tostring(currentDollars)) or 'Not enough cash.', 'error', 4000)
+        cb(false)
+        return
+    end
+    char.removeCurrency(0, amount)
+
+    -- Record the repayment against the loan
+    AddLoanTransaction(loan_id, characterId, amount, 'loan - repayment', 'Loan repayment from character cash')
+
+    -- If fully repaid now, mark loan as paid
+    local after = ComputeLoanOutstanding(loan_id)
+    if after and (after.outstanding or 0) <= 0 then
+        MySQL.query.await('UPDATE `bcc_loans` SET `status` = "paid" WHERE `id` = ?', { loan_id })
+    end
+
+    NotifyClient(src, _U('success_loan_repaid'), 'success', 4000)
+    cb(true)
+end)

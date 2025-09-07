@@ -3,86 +3,90 @@ function OpenWithdrawDepositPage(account, actionType, parentPage)
     local WithdrawDepositPage = FeatherBankMenu:RegisterPage(pageName)
 
     local titles = {
-        deposit = "Deposit",
-        withdraw = "Withdraw"
+        deposit  = _U("deposit_title"),
+        withdraw = _U("withdraw_title")
     }
-    local headerTitle = titles[actionType] or "Transaction"
 
-    WithdrawDepositPage:RegisterElement('header', {
-        value = headerTitle .. " Cash / Gold",
+    local headerTitle = titles[actionType] or _U("transaction_title")
+
+    WithdrawDepositPage:RegisterElement("header", {
+        value = headerTitle .. " " .. _U("cash_gold_header"),
         slot  = "header"
     })
 
     local cashValue = ''
-    WithdrawDepositPage:RegisterElement('input', {
-        label       = "Cash Amount",
-        placeholder = "Enter cash amount",
+    WithdrawDepositPage:RegisterElement("input", {
+        label       = _U("cash_amount_label"),
+        placeholder = _U("cash_amount_placeholder"),
         style       = {}
     }, function(data)
         cashValue = data.value
     end)
 
-    WithdrawDepositPage:RegisterElement('button', {
-        label = headerTitle .. " Cash",
+    WithdrawDepositPage:RegisterElement("button", {
+        label = headerTitle .. " " .. _U("cash_button"),
         style = {}
     }, function()
         local cashAmt = tonumber(cashValue)
         if not cashAmt or cashAmt <= 0 then
-            Feather.Notify.RightNotify("Enter a valid cash amount.", 4000)
+            Notify(_U("invalid_cash_amount"), 4000)
             return
         end
 
         if actionType == "deposit" then
-            Feather.RPC.CallAsync("Feather:Banks:DepositCash", {
+            BccUtils.RPC:CallAsync("Feather:Banks:DepositCash", {
                 account     = account.id,
                 amount      = cashAmt,
-                description = "Player deposit - cash"
+                description = _U("deposit_cash_description")
             })
         else
-            Feather.RPC.CallAsync("Feather:Banks:WithdrawCash", {
+            BccUtils.RPC:CallAsync("Feather:Banks:WithdrawCash", {
                 account     = account.id,
                 amount      = cashAmt,
-                description = "Player withdraw - cash"
+                description = _U("withdraw_cash_description")
             })
         end
+
         FeatherBankMenu:Close()
         OpenWithdrawDepositPage(account, actionType, parentPage)
     end)
 
-    WithdrawDepositPage:RegisterElement('line', {
+    -- Separator under header, consistent with other menus
+    WithdrawDepositPage:RegisterElement("line", {
+        slot  = "header",
         style = {}
     })
 
     local goldValue = ''
-    WithdrawDepositPage:RegisterElement('input', {
-        label       = "Gold Amount",
-        placeholder = "Enter gold amount",
+    WithdrawDepositPage:RegisterElement("input", {
+        label       = _U("gold_amount_label"),
+        placeholder = _U("gold_amount_placeholder"),
         style       = {}
     }, function(data)
         goldValue = data.value
     end)
 
-    WithdrawDepositPage:RegisterElement('button', {
-        label = headerTitle .. " Gold",
+    WithdrawDepositPage:RegisterElement("button", {
+        label = headerTitle .. " " .. _U("gold_button"),
         style = {}
     }, function()
         local goldAmt = tonumber(goldValue)
         if not goldAmt or goldAmt <= 0 then
-            Feather.Notify.RightNotify("Enter a valid gold amount.", 4000)
+            Notify(_U("invalid_gold_amount"), 4000)
             return
         end
 
         if actionType == "deposit" then
-            Feather.RPC.CallAsync("Feather:Banks:DepositGold", {
+            BccUtils.RPC:CallAsync("Feather:Banks:DepositGold", {
                 account     = account.id,
                 amount      = goldAmt,
-                description = "Player deposit - gold"
+                description = _U("deposit_gold_description")
             })
         else
-            Feather.RPC.CallAsync("Feather:Banks:WithdrawGold", {
+            BccUtils.RPC:CallAsync("Feather:Banks:WithdrawGold", {
                 account     = account.id,
                 amount      = goldAmt,
-                description = "Player withdraw - gold"
+                description = _U("withdraw_gold_description")
             })
         end
 
@@ -90,21 +94,21 @@ function OpenWithdrawDepositPage(account, actionType, parentPage)
         OpenWithdrawDepositPage(account, actionType, parentPage)
     end)
 
-    WithdrawDepositPage:RegisterElement('line', {
-        slot = "footer",
+    WithdrawDepositPage:RegisterElement("line", {
+        slot  = "footer",
         style = {}
     })
 
-    WithdrawDepositPage:RegisterElement('button', {
-        label = "Back",
+    WithdrawDepositPage:RegisterElement("button", {
+        label = _U("back_button"),
         slot  = "footer",
         style = {}
     }, function()
         parentPage:RouteTo()
     end)
 
-    WithdrawDepositPage:RegisterElement('bottomline', {
-        slot = "footer",
+    WithdrawDepositPage:RegisterElement("bottomline", {
+        slot  = "footer",
         style = {}
     })
 

@@ -1,7 +1,7 @@
 local Bankers = {}
 
 function GetBanks()
-  local banks = MySQL.query.await('SELECT * FROM `banks`;')
+  local banks = MySQL.query.await('SELECT * FROM `bcc_banks`;')
   return banks
 end
 

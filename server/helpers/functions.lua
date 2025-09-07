@@ -1,5 +1,5 @@
 function NotifyClient(src, message, type, duration)
-    Feather.RPC.Notify("feather-banks:NotifyClient", {
+    BccUtils.RPC:Notify("feather-banks:NotifyClient", {
         message = message,
         type = type or "info",
         duration = duration or 4000

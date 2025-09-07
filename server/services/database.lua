@@ -1,161 +1,190 @@
-local tables = {
-  {
-    name = 'banks',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `banks` (
-      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-      `name` VARCHAR(255) NOT NULL UNIQUE,
-      `x` decimal(15, 2) NOT NULL,
-      `y` decimal(15, 2) NOT NULL,
-      `z` decimal(15, 2) NOT NULL,
-      `h` decimal(15, 2) NOT NULL,
-      `blip` bigint DEFAULT -2128054417,
-      `open_hour` int UNSIGNED NULL,
-      `close_hour` int UNSIGNED NULL
-      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ]],
-  },
-  {
-    name = 'accounts',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `accounts` (
-      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-      `account_number` UUID DEFAULT UUID() NOT NULL,
-      `name` VARCHAR(255) NOT NULL,
-      `bank_id` bigint UNSIGNED NOT NULL,
-      `owner_id` bigint UNSIGNED NOT NULL,
-      `cash` double (15,2) default 0.0,
-      `gold` double (15, 2) default 0.0,
-      CONSTRAINT `FK_Bank` FOREIGN KEY (`bank_id`) REFERENCES `banks` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT `FK_Owner` FOREIGN KEY (`owner_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ]],
-  },
-  {
-    name = 'accounts_access',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `accounts_access` (
-      `account_id` bigint UNSIGNED NOT NULL,
-      `character_id` bigint UNSIGNED NOT NULL,
-      `level` int UNSIGNED default 2,
-      PRIMARY KEY (`account_id`, `character_id`),
-      CONSTRAINT `FK_ba_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT `FK_ba_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-    )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ]],
-  },
-  {
-    name = 'loans',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `loans` (
-      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-      `account_id` bigint UNSIGNED NOT NULL,
-      `character_id` bigint UNSIGNED NOT NULL,
-      `amount` double (15, 2) NOT NULL,
-      `interest` double (15, 2) NOT NULL,
-      `duration` int UNSIGNED NOT NULL,
-      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT `FK_l_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT `FK_l_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      ]]
-  },
-  {
-    name = 'loans_payments',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `loans_payments` (
-      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-      `loan_id` bigint UNSIGNED NOT NULL,
-      `amount` double (15, 2) NOT NULL,
-      `date_due` datetime NOT NULL,
-      `is_paid` boolean NOT NULL DEFAULT false,
-      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT `FK_lp_loan` FOREIGN KEY (`loan_id`) REFERENCES `loans` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      ]]
-  },
-  {
-    name = 'transactions',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `transactions` (
-      `id` uuid DEFAULT UUID() NOT NULL PRIMARY KEY,
-      `account_id` bigint UNSIGNED,
-      `loan_id` bigint UNSIGNED,
-      `character_id` bigint UNSIGNED NOT NULL,
-      `amount` double (15, 2) NOT NULL,
-      `type` VARCHAR(255) NOT NULL,
-      `description` VARCHAR(255) NOT NULL,
-      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT `FK_t_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT `FK_t_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-      )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      ]]
-  },
-  {
-    name = 'safety_deposit_boxes',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `safety_deposit_boxes` (
-      `id` bigint UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-      `name` VARCHAR(255) NOT NULL,
-      `bank_id` bigint UNSIGNED NOT NULL,
-      `owner_id` bigint UNSIGNED NOT NULL,
-      `size` VARCHAR(255) NOT NULL,
-      `inventory_id` UUID NULL,
-      CONSTRAINT `FK_sdb_Bank` FOREIGN KEY (`bank_id`) REFERENCES `banks` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT `FK_sdb_Owner` FOREIGN KEY (`owner_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-    )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ]],
-  },
-  {
-    name = 'safety_deposit_boxes_access',
-    query = [[
-      CREATE TABLE IF NOT EXISTS `safety_deposit_boxes_access` (
-      `safety_deposit_box_id` bigint UNSIGNED NOT NULL,
-      `character_id` bigint UNSIGNED NOT NULL,
-      `level` int UNSIGNED default 2,
-      PRIMARY KEY (`safety_deposit_box_id`, `character_id`),
-      CONSTRAINT `FK_sdba_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT `FK_sdba_safety_deposit_box` FOREIGN KEY (`safety_deposit_box_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-    )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ]],
-  }
-}
+CreateThread(function()
+    -- bcc_banks
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_banks` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `name` VARCHAR(255) NOT NULL UNIQUE,
+            `x` DECIMAL(15,2) NOT NULL,
+            `y` DECIMAL(15,2) NOT NULL,
+            `z` DECIMAL(15,2) NOT NULL,
+            `h` DECIMAL(15,2) NOT NULL,
+            `blip` BIGINT DEFAULT -2128054417,
+            `open_hour` INT UNSIGNED NULL,
+            `close_hour` INT UNSIGNED NULL,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
 
-local data = {
-  {
-    name = 'Valentine',
-    query = [[
-      INSERT IGNORE INTO `banks` (`name`, `x`, `y`, `z`, `h`, `blip`)
-      VALUES ('Valentine', -308.16, 773.77, 118.70, 1.31, -2128054417);
-    ]]
-  },
-  -- {
-  --   name = 'Blackwater',
-  --   query = [[
-  --     INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Blackwater', -308.16, 773.77, 118.70, 1.31, -2128054417);
-  --     ]]
-  -- },
-  -- {
-  --   name = 'Saint Denis',
-  --   query = [[
-  --     INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Saint Denis', -308.16, 773.77, 118.70, 1.31, -2128054417);
-  --     ]]
-  -- },
-  -- {
-  --   name = 'Rhodes',
-  --   query = [[
-  --     INSERT INTO `banks` (`Name`, `X`, `Y`, `Z`, `H`, Blip) VALUES ('Rhodes', -308.16, 773.77, 118.70, 1.31, -2128054417);
-  --     ]]
-  -- },
-}
+    -- bcc_accounts (no FK to characters)
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_accounts` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `account_number` CHAR(36) NOT NULL,
+            `name` VARCHAR(255) NOT NULL,
+            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `owner_id` BIGINT UNSIGNED NOT NULL,
+            `cash` DOUBLE(15,2) DEFAULT 0.0,
+            `gold` DOUBLE(15,2) DEFAULT 0.0,
+            `is_frozen` BOOLEAN NOT NULL DEFAULT FALSE,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uq_account_number` (`account_number`),
+            KEY `idx_accounts_bank` (`bank_id`),
+            KEY `idx_accounts_owner` (`owner_id`),
+            CONSTRAINT `FK_accounts_bank`
+              FOREIGN KEY (`bank_id`) REFERENCES `bcc_banks` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
 
-function LoadDatabase()
-  for i, v in ipairs(tables) do
-    MySQL.query.await(v.query)
-  end
+    -- bcc_accounts_access
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_accounts_access` (
+            `account_id` BIGINT UNSIGNED NOT NULL,
+            `character_id` BIGINT UNSIGNED NOT NULL,
+            `level` INT UNSIGNED DEFAULT 2,
+            PRIMARY KEY (`account_id`, `character_id`),
+            KEY `idx_baa_account` (`account_id`),
+            KEY `idx_baa_character` (`character_id`),
+            CONSTRAINT `FK_baa_account`
+              FOREIGN KEY (`account_id`) REFERENCES `bcc_accounts` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
 
-  for i, v in ipairs(data) do
-    MySQL.query.await(v.query)
-  end
-end
+    -- bcc_loans (no FK to characters)
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_loans` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `account_id` BIGINT UNSIGNED NULL,
+            `bank_id` BIGINT UNSIGNED NULL,
+            `character_id` BIGINT UNSIGNED NOT NULL,
+            `amount` DOUBLE(15,2) NOT NULL,
+            `interest` DOUBLE(15,2) NOT NULL,
+            `duration` INT UNSIGNED NOT NULL,
+            `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+            `approved_by` BIGINT UNSIGNED NULL,
+            `approved_at` DATETIME NULL,
+            `disbursed_account_id` BIGINT UNSIGNED NULL,
+            `disbursed_at` DATETIME NULL,
+            `last_game_day` INT NULL,
+            `game_days_elapsed` INT UNSIGNED NOT NULL DEFAULT 0,
+            `due_game_days` INT UNSIGNED NULL,
+            `is_defaulted` BOOLEAN NOT NULL DEFAULT FALSE,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_loans_account` (`account_id`),
+            KEY `idx_loans_bank` (`bank_id`),
+            CONSTRAINT `FK_loans_account`
+              FOREIGN KEY (`account_id`) REFERENCES `bcc_accounts` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT `FK_loans_bank`
+              FOREIGN KEY (`bank_id`) REFERENCES `bcc_banks` (`id`)
+              ON DELETE SET NULL ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- bcc_loans_payments
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_loans_payments` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `loan_id` BIGINT UNSIGNED NOT NULL,
+            `amount` DOUBLE(15,2) NOT NULL,
+            `date_due` DATETIME NOT NULL,
+            `is_paid` BOOLEAN NOT NULL DEFAULT FALSE,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_lp_loan` (`loan_id`),
+            CONSTRAINT `FK_lp_loan`
+              FOREIGN KEY (`loan_id`) REFERENCES `bcc_loans` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- bcc_loan_interest_rates (no FKs)
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_loan_interest_rates` (
+            `character_id` BIGINT UNSIGNED NOT NULL,
+            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `interest` DOUBLE(15,2) NOT NULL,
+            PRIMARY KEY (`character_id`, `bank_id`),
+            KEY `idx_lir_bank` (`bank_id`),
+            KEY `idx_lir_character` (`character_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- bcc_bank_interest_rates (per-bank base rate used by admin UI)
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_bank_interest_rates` (
+            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `interest` DOUBLE(15,2) NOT NULL,
+            PRIMARY KEY (`bank_id`),
+            KEY `idx_bir_bank` (`bank_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- bcc_transactions (no FK to characters)
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_transactions` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `account_id` BIGINT UNSIGNED,
+            `loan_id` BIGINT UNSIGNED,
+            `character_id` BIGINT UNSIGNED NOT NULL,
+            `amount` DOUBLE(15,2) NOT NULL,
+            `type` VARCHAR(255) NOT NULL,
+            `description` VARCHAR(255) NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_t_account` (`account_id`),
+            KEY `idx_t_loan` (`loan_id`),
+            CONSTRAINT `FK_t_account`
+              FOREIGN KEY (`account_id`) REFERENCES `bcc_accounts` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- bcc_safety_deposit_boxes (no FK to characters)
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_safety_deposit_boxes` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `name` VARCHAR(255) NOT NULL,
+            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `owner_id` BIGINT UNSIGNED NOT NULL,
+            `size` VARCHAR(255) NOT NULL,
+            `inventory_id` CHAR(36) NULL,
+            PRIMARY KEY (`id`),
+            KEY `idx_sdb_bank` (`bank_id`),
+            KEY `idx_sdb_owner` (`owner_id`),
+            CONSTRAINT `FK_sdb_bank`
+              FOREIGN KEY (`bank_id`) REFERENCES `bcc_banks` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- bcc_safety_deposit_boxes_access
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcc_safety_deposit_boxes_access` (
+            `safety_deposit_box_id` BIGINT UNSIGNED NOT NULL,
+            `character_id` BIGINT UNSIGNED NOT NULL,
+            `level` INT UNSIGNED DEFAULT 2,
+            PRIMARY KEY (`safety_deposit_box_id`, `character_id`),
+            KEY `idx_sdba_sdb` (`safety_deposit_box_id`),
+            KEY `idx_sdba_character` (`character_id`),
+            CONSTRAINT `FK_sdba_sdb`
+              FOREIGN KEY (`safety_deposit_box_id`)
+              REFERENCES `bcc_safety_deposit_boxes` (`id`)
+              ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
+
+    -- Optional seed
+    --[[
+    MySQL.query.await([[
+        INSERT IGNORE INTO `bcc_banks` (`name`, `x`, `y`, `z`, `h`, `blip`)
+        VALUES ('Valentine', -308.16, 773.77, 118.70, 1.31, -2128054417);
+    ]]--)--
+    --]]
+
+    devPrint("Database tables for *bcc-banks* created successfully.")
+end)

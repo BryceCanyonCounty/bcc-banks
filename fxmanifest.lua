@@ -7,7 +7,6 @@ version '1.0.0'
 author 'BCC Scripts'
 
 client_scripts {
-   'client/api-loader.lua',
    'client/helpers/*.lua',
    'client/services/*.lua',
    'client/menus/*.lua',
@@ -24,8 +23,11 @@ server_scripts {
 }
 
 shared_scripts {
+   'shared/api-loader.lua',
    'shared/helpers/*.lua',
-   'shared/config.lua'
+   'shared/config.lua',
+   'shared/locale.lua',
+   'languages/*.lua',
 }
 
 dependencies {
