@@ -1,54 +1,104 @@
-# Feather Banks
+# BCC Banks
 
-**Feather Banks** is a powerful and secure banking system designed to provide an immersive and realistic banking experience within your RedM roleplay server. This script offers a wide range of features that make it an essential addition to your server.
+Modern, feature-rich banking for RedM (VORP). BCC Banks adds multi‑account banking, transfers, safety deposit boxes integrated with vorp_inventory, a gold exchange, a full loans system with admin approvals, and immersive world integration (NPC tellers, door locks, distance blips, prompts).
 
-## Implemented Features:
+Works out of the box: tables are auto‑created on first run, UI is powered by feather-menu, and all actions are server‑validated to prevent client-side cheating.
 
--   **Open Multiple Accounts:** Players can open multiple accounts, allowing them to manage their finances and assets efficiently.
+## Features
 
--   **Share Access to Accounts:** This feature grants account administrators the authority to share varying access with other players, fostering collaboration while maintaining security.
+- Accounts: multiple accounts per bank, close with zero balance, share access by level (Admin, Withdraw/Deposit, Deposit, Read‑only), server-side locking while viewing, full transaction history.
+- Transfers: send between accounts (same or other banks) with configurable cross‑bank fee; logs both sides and the fee.
+- Safety Deposit Boxes (SDB): create boxes in sizes (Small/Medium/Large), pay in cash or gold, per‑size weight limits and blacklist, shared custom inventories via vorp_inventory, grant/revoke access by character ID.
+- Gold Exchange: buy/sell gold currency for cash at config rates; redeem inventory gold bars to gold with a configurable fee.
+- Loans: apply with or without an account, per‑bank/per‑character interest rates, admin approve/reject, disburse to account or claim later, repayments, overdue/default tracking using in‑game days, freeze all owner accounts on default.
+- Admin UI: `/bankadmin` to manage banks (create at your position), base bank rates, per‑character overrides, list accounts/loans/SDBs, approve/reject loans.
+- World Integration: distance-spawned tellers (NPCs), distance blips with open/closed color, prompt key to open, initial door-lock states per bank.
+- Localization: English and Romanian included; switch default language in config.
 
--   **Close Accounts:** With built-in protections against closing accounts with funds, authorized account administrators can initiate account closures.
+## Requirements
 
--   **Live Refresh:** Enjoy real-time updates when accessing account pages, preventing client-side cheating and ensuring accurate information.
+Ensure these resources are installed and started before `bcc-banks`:
 
--   **Account Protection:** Feather Banks ensures that only one person can access an account at a time, enhancing security and eliminating possible conflicts/cheating.
+- vorp_core
+- vorp_inventory
+- feather-menu
+- bcc-utils
+- oxmysql
+- Optional: weathersync (used to track in‑game days for loan due/default logic)
 
--   **Busy Banker:** Limiting bank access to one person at a time ensures a more immersive and realistic experience for players.
+Note: `fxmanifest.lua` only declares `oxmysql` as a formal dependency; the others are used via exports and must be started first in your server.cfg.
 
--   **Distance Spawn NPCs:** NPCs spawn at a configurable distance, enhancing realism and reducing server load.
+## Installation
 
--   **Distance Spawn Blips:** These are configurable, making it easy to manage and customize the player experience.
+1) Copy this folder to `[BCC]/bcc-banks`.
 
--   **Deposit and Withdraw Cash or Gold:** Allow players to manage their wealth conveniently.
+2) Add start order to your `server.cfg` (example):
 
--   **Transaction Logs:** Provide a detailed history of financial transactions for transparency and accountability.
+```
+ensure oxmysql
+ensure vorp_core
+ensure vorp_inventory
+ensure feather-menu
+ensure bcc-utils
+ensure bcc-banks
+```
 
-## Implemented Pending Tests:
+3) Start the server. All required tables are created automatically (see “Database” below). Use `/bankadmin` to create your first bank at your position, or insert banks via SQL.
 
--   **Safety Deposit Boxes:** Offer a secure place for players to store their most valuable assets.
+## Configuration
 
-## Planned Features:
+Main settings live in `BCC/bcc-banks/shared/config.lua`:
 
--   **Loan System:** Laying the foundation for future financial services. This system is currently in the design phase with many different ideas floating around. Check back later for more details.
+- Language: set `defaultlang` to `'en_lang'` or `'ro_lang'`.
+- Notifications: `Notify = "feather-menu"` (recommended) or `vorp_core`.
+- Busy Banker: `UseBankerBusy = true` limits teller UI to one person.
+- Prompts: `PromptSettings.Distance` and `TellerKey` (default G).
+- NPCs: `NPCSettings` model, spawn distance.
+- Blips: show, color per state, distance spawn radius.
+- Access Levels: numeric mapping for Admin/Withdraw+Deposit/Deposit/ReadOnly.
+- Transfers: enable and set `CrossBankFeePercent` (applies to sender).
+- Gold Exchange: enable and set buy/sell rates; set `GoldBarItemName`, conversion `GoldBarToGold`, and `GoldBarFeePercent` for redeeming inventory items to gold.
+- Accounts: `MaxAccounts` per bank (0 = no limit).
+- Safety Deposit Boxes: global max per player/bank and per‑size prices, weight, item blacklist and stack behavior.
+- Doors: map door hashes to initial lock state per bank.
 
--   **Dynamic NPC/Bank Addition:** Add NPCs or banks via the in-game menu, giving server administrators flexibility and control.
+Tip: The admin permission check uses VORP character `group` and `job` against `Config.adminGroups` and `Config.AllowedJobs`. There is an optional ACE check in code you can enable if desired.
 
--   **Account Transfers:** Enable players to transfer funds between banks with configurable delay multipliers for distant transactions, adding depth to the banking experience.
+## Usage
 
-## Additional Jobs:
+- Approach a bank teller NPC and press the prompt key (default G) to open the bank UI.
+- Accounts: create/manage, deposit/withdraw cash or gold, view transactions, share/revoke access, and transfer funds.
+- Safety Deposit Boxes: create boxes (cash or gold), open inventory UI, manage access.
+- Gold Exchange: buy/sell gold, redeem gold bars from inventory to gold.
+- Loans: apply (auto‑creates an account if needed), claim funds to an account once approved, repay from cash, track status. Overdue/default marks freeze all owner accounts until resolved.
+- Admin: `/bankadmin` to open the admin UI. Create banks, adjust rates, review lists, approve/reject loans.
 
--   **Loan Officer:** A dedicated script for managing loans, expanding the financial services available to players.
+## Commands & Keys
 
--   **Armored Car Services:** Create an exciting career option for players who want to provide secure transportation for valuable assets.
+- `/bankadmin` — open the bank admin UI (requires admin per config).
+- Prompt key: `Config.PromptSettings.TellerKey` (default G) at teller.
+- A developer-only `banksReady` command exists to reinit banks in dev mode.
 
-**Feather Banks** is a comprehensive and dynamic addition to your RedM server, enhancing immersion, realism, and player engagement. With its ongoing development and planned features, it ensures that your server remains at the forefront of the RedM roleplay experience. Elevate your server today with Feather Banks, where financial opportunities await!
+## Database
 
-### Dependencies
+Tables are created automatically on server start in `server/services/database.lua`:
 
-| Dependency        | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| Oxymysql          | MySQL library for handling database interactions.       |
-| Feather Core      | Core component of the Feather Framework.                |
-| Feather Inventory | Manages player inventories and items within the script. |
-| Feather Menu      | Used to create elegant in-game menus.                   |
+- `bcc_banks`, `bcc_accounts`, `bcc_accounts_access`
+- `bcc_transactions`
+- `bcc_loans`, `bcc_loans_payments`, `bcc_loan_interest_rates`, `bcc_bank_interest_rates`
+- `bcc_safety_deposit_boxes`, `bcc_safety_deposit_boxes_access`
+
+You can seed banks by using `/bankadmin` → Create Bank At Your Location, or insert rows into `bcc_banks`.
+
+## Technical Notes
+
+- Server‑side validation: all sensitive operations run through server RPCs and DB checks; accounts can be locked while viewing to prevent race conditions.
+- Inventory: SDB inventories are registered dynamically using `vorp_inventory` exports. Older rows are backfilled on startup.
+- Loan timing: if `weathersync` is present, the script tracks game days to progress loan due dates and mark defaults.
+- Discord: code includes a `bcc-utils` Discord webhook setup; provide `Config.WebhookLink`, `WebhookTitle`, and `WebhookAvatar` if you wish to emit notifications.
+
+## Credits
+
+Author: BCC Scripts
+
+Thanks to the VORP and RedM communities, and to the maintainers of `vorp_core`, `vorp_inventory`, `feather-menu`, `bcc-utils`, and `oxmysql`.

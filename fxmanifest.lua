@@ -7,9 +7,9 @@ version '1.0.0'
 author 'BCC Scripts'
 
 client_scripts {
-   'client/api-loader.lua',
    'client/helpers/*.lua',
    'client/services/*.lua',
+   'client/menus/*.lua',
    'client/main.lua',
 }
 
@@ -23,26 +23,20 @@ server_scripts {
 }
 
 shared_scripts {
+   'shared/api-loader.lua',
    'shared/helpers/*.lua',
-   'shared/config.lua'
-}
-
-
-ui_page {
-   "ui/shim.html"
-}
-
-files {
-   "ui/shim.html",
-   "ui/js/*.*",
-   "ui/css/*.*",
-   "ui/fonts/*.*",
-   "ui/images/*.*",
+   'shared/config.lua',
+   'shared/locale.lua',
+   'languages/*.lua',
 }
 
 dependencies {
    'oxmysql',
 }
 
+files {
+  'ui/*',
+  'ui/images/*',
+}
 
 exports {}
