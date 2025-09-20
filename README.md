@@ -104,5 +104,3 @@ You can seed banks by using `/bankadmin` → Create Bank At Your Location, or in
 ## Credits
 
 Author: BCC Scripts
-
-Thanks to the VORP and RedM communities, and to the maintainers of `vorp_core`, `vorp_inventory`, `feather-menu`, `bcc-utils`, and `oxmysql`.
