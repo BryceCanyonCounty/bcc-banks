@@ -1,5 +1,15 @@
 local LockedAccounts = {}
 
+if not _G.__bcc_accounts_rng_seeded then
+    local seed = (os.time() % 100000)
+    local ptr = tonumber(string.sub(tostring({}), 8)) or 0
+    seed = seed + ptr
+    math.randomseed(seed)
+    -- warm-up calls to avoid low-quality initial outputs on some Lua implementations
+    math.random(); math.random(); math.random()
+    _G.__bcc_accounts_rng_seeded = true
+end
+
 function GetAccountCount(owner, bank)
     local result = MySQL.query.await(
         'SELECT COUNT(*) FROM `bcc_accounts` WHERE `owner_id` = ? AND `bank_id` = ?',
@@ -27,11 +37,6 @@ function CreateAccount(name, owner, bank)
         return tostring(math.random(10000000, 99999999))
     end
     local function nextUniqueAccountNumber()
-        -- Best-effort seed once per process
-        if not _G.__bcc_accounts_rng_seeded then
-            math.randomseed((os.time() % 100000) + tonumber(string.sub(tostring({}), 8)) )
-            _G.__bcc_accounts_rng_seeded = true
-        end
         for i = 1, 20 do
             local candidate = generate8()
             local exists = MySQL.query.await('SELECT 1 FROM `bcc_accounts` WHERE `account_number` = ? LIMIT 1;', { candidate })
@@ -83,10 +88,6 @@ function CreateAccountReturn(name, owner, bank)
         return tostring(math.random(10000000, 99999999))
     end
     local function nextUniqueAccountNumber()
-        if not _G.__bcc_accounts_rng_seeded then
-            math.randomseed((os.time() % 100000) + tonumber(string.sub(tostring({}), 8)) )
-            _G.__bcc_accounts_rng_seeded = true
-        end
         for i = 1, 20 do
             local candidate = generate8()
             local exists = MySQL.query.await('SELECT 1 FROM `bcc_accounts` WHERE `account_number` = ? LIMIT 1;', { candidate })

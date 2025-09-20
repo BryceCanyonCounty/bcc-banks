@@ -1,6 +1,6 @@
 Config = {
-	devMode            = true,
-	defaultlang        = 'ro_lang',
+	devMode            = false,
+	defaultlang        = 'en_lang',
 	Notify             = "feather-menu", ----or use feather-core
 	UseBankerBusy      = true,        -- If enabled only 1 person can use the bank at a time
 

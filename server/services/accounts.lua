@@ -34,9 +34,14 @@ BccUtils.RPC:Register('Feather:Banks:GetAccounts', function(params, cb, src)
         return
     end
 
-    local ok, result = pcall(function()
-        return GetAccounts(characterId, bankId)
-    end)
+    if type(GetAccounts) ~= 'function' then
+        devPrint("GetAccounts is not available (nil). Ensure controllers are loaded before services.")
+        NotifyClient(src, _U('error_db'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local ok, result = pcall(GetAccounts, characterId, bankId)
 
     if not ok then
         devPrint("GetAccounts query failed:", result)
