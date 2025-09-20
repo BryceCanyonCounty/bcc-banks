@@ -24,7 +24,7 @@ Config = {
 
 	-- https://github.com/femga/rdr3_discoveries/blob/master/Controls/README.md
 	PromptSettings     = {
-		Distance = 1.0,   -- Distance for the prompt to work
+		Distance = 3.0,   -- Distance for the prompt to work
 		TellerKey = 0x760A9C6F, -- Letter G
 		SDBKey = 0x760A9C6F -- Letter G
 	},
@@ -95,12 +95,12 @@ Config = {
 	GoldExchange       = {
 		Enabled          = true,
 		-- Dollar price per 1.00 gold unit
-		BuyPricePerGold  = 10.0,
-		SellPricePerGold = 9.0,
+		BuyPricePerGold  = 250.0,
+		SellPricePerGold = 180.0,
 		-- Inventory item -> gold currency exchange
 		GoldBarItemName  = 'goldbar',   -- item name in inventory
 		GoldBarToGold    = 1.0,         -- how much gold currency per 1 goldbar item
-		GoldBarFeePercent = 5.0,        -- fee percent taken when exchanging gold bars to gold
+		GoldBarFeePercent = 10.0,       -- fee percent taken when exchanging gold bars to gold
 	},
 
 	-- Transfers
@@ -113,6 +113,20 @@ Config = {
 	-- Bank Account Options
 	Accounts           = {
 		MaxAccounts = 5 -- 0 = No Limit
+	},
+
+	-- Loan timing & reminders
+	LoanTiming = {
+		DaysUntilDefault = 10, -- Number of in-game days (weathersync cycles) before a loan defaults
+		DailyReminders = {
+			Enabled = true,            -- Send daily reminders while a balance remains
+			SendMailbox = true,        -- Deliver a mail via bcc-mailbox
+			NotifyOnline = true,       -- Pop an on-screen notification for borrowers that are online
+			MailFrom = 'Bank Postmaster', -- Display name for system mail
+			MailSubject = 'Loan Payment Reminder', -- string.format with (elapsedDays, dueDays, loanId, outstanding)
+			MailBody = 'Day %d of %d for your loan #%s. Outstanding balance: $%s. Please visit the bank to avoid default.',
+			NotifyMessage = 'Your bank loan is still outstanding. Visit a bank today to make a payment.'
+		}
 	},
 
 	-- Safety Deposit Box Options
@@ -177,5 +191,26 @@ Config = {
 		[1634148892] = 1, -- Rhodes bank, teller gate
 		[3483244267] = 1, -- Rhodes bank, vault
 		[3142122679] = 1, -- Rhodes bank, back entrance
+	},
+
+	-- Lockpicking settings for bank doors
+	LockPicking = {
+		Enabled = true,              -- Enable lockpicking for configured bank doors
+		Resource = 'lockpick',       -- Minigame resource at `resources/[OTHER]/lockpick`
+		Attempts = 3,               -- How many attempts the minigame provides
+		PromptKey = 0xCEFD9220,     -- Default: Key "E" (same as bcc-doorlocks)
+		Radius = 1.6,               -- Distance to door center to show prompt
+		RelockSeconds = 0,          -- Optional: re-lock after N seconds (0 = never)
+		NotifyOnMissing = true,     -- Notify if lockpick resource is missing
+		RequireItem = false,        -- If true, checks for item before minigame
+		ItemName = 'lockpick',      -- Item to check in vorp_inventory
+
+		-- Durability handling like mms-robbery
+		Durability = {
+			Enabled = true,          -- If true, reduce durability on fail; else fallback destroy optionally
+			Max = 100,               -- Max durability when no metadata present
+			DamageOnFail = 25,       -- Durability lost per failed attempt
+			DestroyOnFailIfDisabled = true -- If durability disabled, remove one lockpick on fail
+		}
 	}
 }

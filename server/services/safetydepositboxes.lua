@@ -161,6 +161,58 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
     cb(true, box)
 end)
 
+local function resolveSDBSizeConfig(sizeKey)
+    if not sizeKey then return nil end
+    local sizes = Config and Config.SafetyDepositBoxes and Config.SafetyDepositBoxes.Sizes or {}
+    if not sizes then return nil end
+    local want = tostring(sizeKey)
+    local wantLower = want:lower()
+    for key, cfg in pairs(sizes) do
+        local keyStr = tostring(key)
+        if keyStr == want or keyStr:lower() == wantLower then
+            return cfg
+        end
+    end
+    return nil
+end
+
+local function ensureSDBInventoryRegistered(boxId, inventoryId, displayName, sizeKey)
+    local invId = inventoryId
+    if not invId or invId == '' then
+        invId = 'sdb_' .. tostring(boxId)
+    end
+
+    local invName = (displayName and displayName ~= '') and displayName or ('SDB #' .. tostring(boxId))
+    local sizeCfg = resolveSDBSizeConfig(sizeKey)
+    local ignoreStacks = sizeCfg and sizeCfg.IgnoreItemLimit == true
+    local blacklist = (sizeCfg and sizeCfg.BlacklistItems and #sizeCfg.BlacklistItems > 0) and sizeCfg.BlacklistItems or nil
+    local limit = tonumber(sizeCfg and sizeCfg.MaxWeight) or 100
+
+    local isRegistered = exports.vorp_inventory:isCustomInventoryRegistered(invId)
+    if not isRegistered then
+        exports.vorp_inventory:registerInventory({
+            id = invId,
+            name = invName,
+            limit = limit,
+            acceptWeapons = true,
+            shared = true,
+            ignoreItemStackLimit = ignoreStacks,
+            whitelistItems = false,
+            UsePermissions = false,
+            UseBlackList = blacklist ~= nil,
+            whitelistWeapons = false,
+        })
+
+        if blacklist then
+            for _, itemName in ipairs(blacklist) do
+                exports.vorp_inventory:BlackListCustomAny(invId, itemName)
+            end
+        end
+    end
+
+    return invId, invName, sizeCfg
+end
+
 BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
     local user = VORPcore.getUser(src)
     if not user then
@@ -195,65 +247,38 @@ BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
 
     -- Always query our table name directly
     local row = MySQL.query.await(
-        'SELECT `inventory_id`,`name` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
+        'SELECT `inventory_id`,`name`,`size` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
         { sdbId }
     )[1]
-    if not row or not row.inventory_id then
-        -- Try to register and backfill on-the-fly if missing inventory_id
-        local box = MySQL.query.await('SELECT `id`,`size` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;', { sdbId })[1]
-        if not box then
-            devPrint("OpenSDB: SDB row not found for id", sdbId)
-            NotifyClient(src, _U('error_sdb_not_found'), 'error', 4000)
-            cb(false)
-            return
-        end
-        local sizes = Config and Config.SafetyDepositBoxes and Config.SafetyDepositBoxes.Sizes or {}
-        local sz = sizes and sizes[tostring(box.size)] or nil
-        if not sz then
-            devPrint("OpenSDB: size config missing for SDB id", sdbId, "size=", tostring(box.size))
-            NotifyClient(src, _U('error_sdb_not_found'), 'error', 4000)
-            cb(false)
-            return
-        end
-        local invId = 'sdb_' .. tostring(box.id)
-        local invName = 'SDB #' .. tostring(box.id)
-        local invData = {
-            id = invId,
-            name = invName,
-            limit = 100,
-            acceptWeapons = true,
-            shared = true,
-            ignoreItemStackLimit = (sz.IgnoreItemLimit == true),
-            whitelistItems = false,
-            UsePermissions = false,
-            UseBlackList = (sz.BlacklistItems and #sz.BlacklistItems or 0) > 0,
-            whitelistWeapons = false,
-        }
-        exports.vorp_inventory:registerInventory(invData)
-        if sz.BlacklistItems and #sz.BlacklistItems > 0 then
-            for _, itemName in ipairs(sz.BlacklistItems) do
-                exports.vorp_inventory:BlackListCustomAny(invId, itemName)
-            end
-        end
-        MySQL.query.await('UPDATE `bcc_safety_deposit_boxes` SET `inventory_id`=? WHERE `id`=?', { invId, box.id })
-        row = { inventory_id = invId, name = row and row.name or invName }
+    if not row then
+        devPrint("OpenSDB: SDB row not found for id", sdbId)
+        NotifyClient(src, _U('error_sdb_not_found'), 'error', 4000)
+        cb(false)
+        return
     end
 
-    local invId = tostring(row.inventory_id)
+    local invId, invName = ensureSDBInventoryRegistered(sdbId, row.inventory_id, row.name, row.size)
+    if not row.inventory_id or row.inventory_id ~= invId then
+        MySQL.query.await('UPDATE `bcc_safety_deposit_boxes` SET `inventory_id`=? WHERE `id`=?', { invId, sdbId })
+        row.inventory_id = invId
+    end
+
+    local invIdStr = tostring(invId)
     devPrint('OpenSDB: attempting openInventory for', invId, 'src=', src)
     Wait(100)
     -- Proactively close any current inventory to avoid conflicts
-    pcall(function() exports.vorp_inventory:closeInventory(src) end)
+    --[[pcall(function() exports.vorp_inventory:closeInventory(src) end)
     local ok, err = pcall(function()
         exports.vorp_inventory:openInventory(src, invId)
-    end)
-    if not ok then
+    end)]]--
+    --[[if not ok then
         devPrint('OpenSDB: openInventory error:', tostring(err))
         NotifyClient(src, _U('error_unable_open_sdb') or 'Unable to open SDB right now.', 'error', 3500)
         cb(false)
         return
-    end
-    devPrint('OpenSDB: openInventory success for', invId)
+    end]]--
+    devPrint("[OpenInv] Opening " .. invIdStr .. " for src " .. tostring(src))
+    exports.vorp_inventory:openInventory(src, invIdStr)
     cb(true)
 end)
 
