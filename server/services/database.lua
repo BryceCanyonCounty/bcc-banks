@@ -194,12 +194,14 @@ CreateThread(function()
     ]])
 
     -- Optional seed
-    --[[
     MySQL.query.await([[
-        INSERT IGNORE INTO `bcc_banks` (`name`, `x`, `y`, `z`, `h`, `blip`)
-        VALUES ('Valentine', -308.16, 773.77, 118.70, 1.31, -2128054417);
-    ]]--)--
-    --]]
+        INSERT IGNORE INTO `bcc_banks` (`name`, `x`, `y`, `z`, `h`, `blip`, `hours_active`, `open_hour`, `close_hour`)
+        VALUES 
+        ('Valentine', -307.82, 773.96, 118.70, 2.88, -2128054417, 0, 7, 21),
+        ('BlackWater', -810.51, -1275.37, 43.64, 189.16, -2128054417, 0, 7, 21),
+        ('Rhodes', 1291.25, -1303.30, 77.04, 322.24, -2128054417, 0, 7, 21),
+        ('SaintDenis', 2644.15, -1296.16, 52.25, 111.40, -2128054417, 0, 7, 21);
+    ]])
 
     devPrint("Database tables for *bcc-banks* created successfully.")
 end)
