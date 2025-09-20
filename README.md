@@ -40,8 +40,12 @@ ensure vorp_core
 ensure vorp_inventory
 ensure feather-menu
 ensure bcc-utils
+ensure bcc-minigames
 ensure bcc-banks
 ```
+If you want to use this lockpick intstead of bcc-minigames 
+
+Requires the lockpick system dependency: https://github.com/guf1ck/lockpick-system
 
 3) Start the server. All required tables are created automatically (see “Database” below). Use `/bankadmin` to create your first bank at your position, or insert banks via SQL.
 
@@ -100,5 +104,3 @@ You can seed banks by using `/bankadmin` → Create Bank At Your Location, or in
 ## Credits
 
 Author: BCC Scripts
-
-Thanks to the VORP and RedM communities, and to the maintainers of `vorp_core`, `vorp_inventory`, `feather-menu`, `bcc-utils`, and `oxmysql`.

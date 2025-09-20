@@ -1,3 +1,80 @@
+local MailboxAPI
+
+local function getMailboxApi()
+    if MailboxAPI then return MailboxAPI end
+    local ok, api = pcall(function()
+        return exports['bcc-mailbox']:getMailboxAPI()
+    end)
+    if ok and api then
+        MailboxAPI = api
+    end
+    return MailboxAPI
+end
+
+local function formatCurrency(amount)
+    local num = tonumber(amount) or 0
+    return string.format('%.2f', num)
+end
+
+local function safeFormat(fmt, ...)
+    if type(fmt) ~= 'string' then return '' end
+    local ok, result = pcall(string.format, fmt, ...)
+    if ok then return result end
+    return fmt
+end
+
+local function getReminderConfig()
+    local timing = Config.LoanTiming or {}
+    local reminders = timing.DailyReminders or {}
+    return timing, reminders
+end
+
+local function getSourceForCharacter(charIdentifier)
+    if not charIdentifier then return nil end
+    for _, playerId in ipairs(GetPlayers()) do
+        local src = tonumber(playerId)
+        local user = VORPcore.getUser(src)
+        if user then
+            local character = user.getUsedCharacter
+            if character and tonumber(character.charIdentifier) == tonumber(charIdentifier) then
+                return src
+            end
+        end
+    end
+    return nil
+end
+
+local function sendDailyReminder(loanRow, info, elapsedDays, dueDays)
+    local _, reminders = getReminderConfig()
+    if reminders.Enabled ~= true then return end
+
+    local outstanding = tonumber(info and info.outstanding or 0) or 0
+    if outstanding <= 0 then return end
+
+    local totalDays = (dueDays and dueDays > 0) and dueDays or elapsedDays
+    local subjectFmt = reminders.MailSubject or 'Loan Payment Reminder'
+    local bodyFmt = reminders.MailBody or 'Day %d of %d for your loan #%s. Outstanding balance: $%s. Please visit the bank to avoid default.'
+    local notifyMsg = reminders.NotifyMessage or 'Your bank loan is still outstanding. Visit a bank today to make a payment.'
+    local fromName = reminders.MailFrom or 'Bank Postmaster'
+
+    local formattedSubject = safeFormat(subjectFmt, elapsedDays, totalDays, loanRow.id, formatCurrency(outstanding))
+    local formattedBody = safeFormat(bodyFmt, elapsedDays, totalDays, loanRow.id, formatCurrency(outstanding))
+
+    if reminders.SendMailbox then
+        local mailApi = getMailboxApi()
+        if mailApi then
+            mailApi:SendMailToCharacter(loanRow.character_id, formattedSubject, formattedBody, { fromName = fromName })
+        end
+    end
+
+    if reminders.NotifyOnline then
+        local src = getSourceForCharacter(loanRow.character_id)
+        if src then
+            NotifyClient(src, notifyMsg, 'warning', 6000)
+        end
+    end
+end
+
 BccUtils.RPC:Register('Feather:Banks:GetLoans', function(params, cb, src)
     devPrint('GetLoans RPC called. src=', src, 'params=', params)
 
@@ -197,11 +274,25 @@ CreateThread(function()
                 local newElapsed = elapsed + delta
                 MySQL.query.await('UPDATE `bcc_loans` SET `game_days_elapsed` = ?, `last_game_day` = ? WHERE `id` = ?', { newElapsed, curDay, ln.id })
 
-                -- Check default condition
-                if due and due > 0 and newElapsed >= due then
-                    -- Compute outstanding
-                    local info = ComputeLoanOutstanding(ln.id)
-                    if info and (info.outstanding or 0) > 0 then
+                local info = ComputeLoanOutstanding(ln.id)
+                if info then
+                    if delta > 0 then
+                        sendDailyReminder(ln, info, newElapsed, due)
+                    end
+
+                    local outstanding = tonumber(info.outstanding or 0) or 0
+                    if due and due > 0 and newElapsed >= due and outstanding > 0 then
+                        local mailApi = getMailboxApi()
+                        if mailApi then
+                            local _, reminders = getReminderConfig()
+                            local fromName = reminders.MailFrom or 'Bank Postmaster'
+                            local subject = 'Loan Default Notice'
+                            local body = ('Your loan #%s is overdue with $%s outstanding. Visit any bank immediately to settle the debt or expect enforcement actions.'):format(
+                                ln.id,
+                                formatCurrency(outstanding)
+                            )
+                            mailApi:SendMailToCharacter(ln.character_id, subject, body, { fromName = fromName })
+                        end
                         -- Mark defaulted and freeze all accounts for owner
                         MySQL.query.await('UPDATE `bcc_loans` SET `is_defaulted` = 1, `status` = "defaulted" WHERE `id` = ?', { ln.id })
                         SetOwnerAccountsFrozen(tonumber(ln.character_id), true)

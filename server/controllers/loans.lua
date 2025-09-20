@@ -3,9 +3,17 @@ function CreateLoan(account_id, character_id, amount, interest, duration, bank_i
         return { status = false, message = 'Invalid loan data.' }
     end
 
-    -- Duration is in months from UI; compute due in game days (30 days per month)
+    -- Duration is in months from UI; compute due in game days (30 days per month) unless overridden
     local months = tonumber(duration) or 0
     local due_game_days = months * 30
+    local timingCfg = Config.LoanTiming or {}
+    local overrideDays = tonumber(timingCfg.DaysUntilDefault or 0)
+    if overrideDays and overrideDays > 0 then
+        due_game_days = overrideDays
+    end
+    if due_game_days < 1 then
+        due_game_days = 1
+    end
 
     -- Seed last_game_day from weathersync so we can track days passed
     local day = 0
