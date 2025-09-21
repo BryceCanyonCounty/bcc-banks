@@ -57,9 +57,10 @@ function CreateAccount(name, owner, bank)
 
     local acctNum = nextUniqueAccountNumber()
 
+    local accountId = BccUtils.UUID()
     local result = MySQL.query.await(
-        'INSERT INTO `bcc_accounts` (account_number, name, bank_id, owner_id) VALUES (?, ?, ?, ?) RETURNING *;',
-        { acctNum, name, bank, owner }
+        'INSERT INTO `bcc_accounts` (id, account_number, name, bank_id, owner_id) VALUES (?, ?, ?, ?, ?) RETURNING *;',
+        { accountId, acctNum, name, bank, owner }
     )
     local account = result and result[1]
 
@@ -107,9 +108,10 @@ function CreateAccountReturn(name, owner, bank)
 
     local acctNum = nextUniqueAccountNumber()
 
+    local accountId = BccUtils.UUID()
     local result = MySQL.query.await(
-        'INSERT INTO `bcc_accounts` (account_number, name, bank_id, owner_id) VALUES (?, ?, ?, ?) RETURNING *;',
-        { acctNum, name, bank, owner }
+        'INSERT INTO `bcc_accounts` (id, account_number, name, bank_id, owner_id) VALUES (?, ?, ?, ?, ?) RETURNING *;',
+        { accountId, acctNum, name, bank, owner }
     )
     local account = result and result[1]
 

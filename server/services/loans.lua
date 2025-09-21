@@ -78,8 +78,8 @@ end
 BccUtils.RPC:Register('Feather:Banks:GetLoans', function(params, cb, src)
     devPrint('GetLoans RPC called. src=', src, 'params=', params)
 
-    local account_id = tonumber(params and params.account)
-    local bank_id    = tonumber(params and params.bank)
+    local account_id = NormalizeId(params and params.account)
+    local bank_id    = NormalizeId(params and params.bank)
 
     local user = VORPcore.getUser(src)
     if not user then
@@ -119,7 +119,7 @@ BccUtils.RPC:Register('Feather:Banks:GetLoans', function(params, cb, src)
 end)
 
 BccUtils.RPC:Register('Feather:Banks:GetLoan', function(params, cb, src)
-    local loan_id = tonumber(params and params.loan)
+    local loan_id = NormalizeId(params and params.loan)
     if not loan_id then
         NotifyClient(src, _U('error_invalid_loan_id'), 'error', 4000)
         cb(false)
@@ -149,8 +149,8 @@ BccUtils.RPC:Register('Feather:Banks:ClaimLoanDisbursement', function(params, cb
     end
     local characterId = char.charIdentifier
 
-    local loan_id    = tonumber(params and params.loan)
-    local account_id = tonumber(params and params.account)
+    local loan_id    = NormalizeId(params and params.loan)
+    local account_id = NormalizeId(params and params.account)
     if not loan_id or not account_id then
         NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
         cb(false)
@@ -189,8 +189,8 @@ BccUtils.RPC:Register('Feather:Banks:CreateLoan', function(params, cb, src)
         return
     end
 
-    local account_id = tonumber(params and params.account)
-    local bankId     = tonumber(params and params.bank)
+    local account_id = NormalizeId(params and params.account)
+    local bankId     = NormalizeId(params and params.bank)
     local amount     = tonumber(params and params.amount)
     local duration   = tonumber(params and params.duration) or 0
 
@@ -247,8 +247,8 @@ BccUtils.RPC:Register('Feather:Banks:GetLoanRate', function(params, cb, src)
         cb(false)
         return
     end
-    local account_id = tonumber(params and params.account)
-    local bankId = account_id and GetBankIdForAccount(account_id) or tonumber(params and params.bank)
+    local account_id = NormalizeId(params and params.account)
+    local bankId = account_id and GetBankIdForAccount(account_id) or NormalizeId(params and params.bank)
     local rate = GetCharacterLoanInterest(characterId, bankId)
     cb(true, rate)
 end)
@@ -325,7 +325,7 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
         return
     end
 
-    local loan_id   = tonumber(params and params.loan)
+    local loan_id   = NormalizeId(params and params.loan)
     local amount    = tonumber(params and params.amount)
 
     if not loan_id or not amount or amount <= 0 then

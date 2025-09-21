@@ -241,15 +241,15 @@ function OpenSDBInventory(sdb, ParentPage)
     SetNuiFocus(false, false)
     devPrint('[SDB] Bank menu closed, focus released; waiting...')
     Wait(250)
-    local sdbIdNum = tonumber(sdb and sdb.id)
-    devPrint('[SDB] Converting sdb.id to number ->', tostring(sdbIdNum))
-    local ok = BccUtils.RPC:CallAsync('Feather:Banks:OpenSDB', { sdb_id = sdbIdNum })
+    local sdbId = NormalizeId(sdb and sdb.id)
+    devPrint('[SDB] Normalized sdb.id ->', tostring(sdbId))
+    local ok = BccUtils.RPC:CallAsync('Feather:Banks:OpenSDB', { sdb_id = sdbId })
     devPrint('[SDB] RPC Feather:Banks:OpenSDB returned:', tostring(ok))
     if not ok then
-        devPrint('[SDB] OpenSDB RPC failed for id=', tostring(sdbIdNum))
+        devPrint('[SDB] OpenSDB RPC failed for id=', tostring(sdbId))
         Notify(_U('error_unable_open_sdb') or 'Unable to open Safety Deposit Box.', 'error', 3500)
     else
-        devPrint('[SDB] Opened inventory for id=', tostring(sdbIdNum))
+        devPrint('[SDB] Opened inventory for id=', tostring(sdbId))
     end
 end
 
@@ -332,7 +332,7 @@ function OpenSDBGiveAccessPage(sdb, ParentPage, SDBListPage)
             return
         end
         local ok, res = BccUtils.RPC:CallAsync('Feather:Banks:AddSDBAccess', {
-            sdb_id   = sdb.id,
+            sdb_id   = NormalizeId(sdb.id),
             user_src = charId,
             level    = level
         })
@@ -366,7 +366,7 @@ function OpenSDBRemoveAccessPage(sdb, ParentPage, SDBListPage)
         slot  = 'header',
         style = {}
     })
-    local ok, result = BccUtils.RPC:CallAsync('Feather:Banks:GetSDBAccessList', { sdb_id = sdb.id })
+    local ok, result = BccUtils.RPC:CallAsync('Feather:Banks:GetSDBAccessList', { sdb_id = NormalizeId(sdb.id) })
     local accessList = (ok and result and result.access) or {}
     if #accessList == 0 then
         SDBRemoveAccessPage:RegisterElement('textdisplay', {
@@ -397,7 +397,7 @@ function OpenSDBRemoveAccessPage(sdb, ParentPage, SDBListPage)
                     style = {}
                 }, function()
                     local ok = BccUtils.RPC:CallAsync('Feather:Banks:RemoveSDBAccess', {
-                        sdb_id    = sdb.id,
+                        sdb_id    = NormalizeId(sdb.id),
                         character = access.character_id
                     })
                     OpenSDBRemoveAccessPage(sdb, ParentPage, SDBListPage)

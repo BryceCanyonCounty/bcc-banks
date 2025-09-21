@@ -22,9 +22,10 @@ function CreateLoan(account_id, character_id, amount, interest, duration, bank_i
         day = tonumber(t.day) or 0
     end
 
+    local loanId = BccUtils.UUID()
     local loanRows = MySQL.query.await(
-        'INSERT INTO `bcc_loans` (account_id, bank_id, character_id, amount, interest, duration, status, last_game_day, game_days_elapsed, due_game_days) VALUES (?, ?, ?, ?, ?, ?, \'pending\', ?, 0, ?) RETURNING *;',
-        { account_id, bank_id, character_id, amount, interest or 0, months, day, due_game_days }
+        'INSERT INTO `bcc_loans` (id, account_id, bank_id, character_id, amount, interest, duration, status, last_game_day, game_days_elapsed, due_game_days) VALUES (?, ?, ?, ?, ?, ?, ?, \'pending\', ?, 0, ?) RETURNING *;',
+        { loanId, account_id, bank_id, character_id, amount, interest or 0, months, day, due_game_days }
     )
 
     local loan = loanRows and loanRows[1]
@@ -152,7 +153,7 @@ function ClaimLoanToAccount(loan_id, account_id, character_id)
     if not acc then
         return { status = false, message = 'Invalid account.' }
     end
-    if loan.bank_id and acc.bank_id and tonumber(loan.bank_id) ~= tonumber(acc.bank_id) then
+    if loan.bank_id and acc.bank_id and not IdsEqual(loan.bank_id, acc.bank_id) then
         return { status = false, message = 'Account is not at the same bank.' }
     end
     if not (IsAccountOwner(account_id, character_id) or IsAccountAdmin(account_id, character_id)) then
@@ -198,7 +199,7 @@ function GetCharacterLoanInterest(character_id, bank_id)
         end
     end
     -- 3) character global default
-    row = MySQL.query.await('SELECT `interest` FROM `bcc_loan_interest_rates` WHERE `character_id` = ? AND `bank_id` = 0 LIMIT 1;', { character_id })
+    row = MySQL.query.await('SELECT `interest` FROM `bcc_loan_interest_rates` WHERE `character_id` = ? AND `bank_id` = ? LIMIT 1;', { character_id, '0' })
     if row and row[1] and row[1].interest then
         return tonumber(row[1].interest) or 10.0
     end

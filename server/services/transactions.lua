@@ -1,7 +1,7 @@
 BccUtils.RPC:Register('Feather:Banks:GetTransactions', function(params, cb, src)
     devPrint("RPC called by src:", src)
 
-    local account = tonumber(params and params.account)
+    local account = NormalizeId(params and params.account)
     devPrint("Received account ID:", account)
 
     if not account then

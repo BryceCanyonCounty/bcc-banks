@@ -16,7 +16,7 @@ BccUtils.RPC:Register('Feather:Banks:GetAccounts', function(params, cb, src)
         return
     end
     local characterId = char.charIdentifier
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
 
     devPrint("Parsed bankId:", bankId, "characterId:", characterId)
 
@@ -57,7 +57,7 @@ end)
 
 -- Public: list all accounts for a bank (minimal fields)
 BccUtils.RPC:Register('Feather:Banks:ListAccountsByBank', function(params, cb, src)
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     devPrint('ListAccountsByBank RPC called. src=', src, 'bank=', bankId)
     if not bankId then
         cb(false)
@@ -97,7 +97,7 @@ BccUtils.RPC:Register('Feather:Banks:CreateAccount', function(params, cb, src)
     end
     local characterId = char.charIdentifier
     local name = params and params.name
-    local bank = tonumber(params and params.bank)
+    local bank = NormalizeId(params and params.bank)
 
     devPrint("Fetched character:", char)
     devPrint("CreateAccount inputs -> name:", name, "bank:", bank, "characterId:", characterId)
@@ -152,8 +152,8 @@ BccUtils.RPC:Register('Feather:Banks:CloseAccount', function(params, cb, src)
         return
     end
     local characterId = char.charIdentifier
-    local bank = tonumber(params and params.bank)
-    local account = tonumber(params and params.account)
+    local bank = NormalizeId(params and params.bank)
+    local account = NormalizeId(params and params.account)
 
     devPrint("CloseAccount inputs -> bank:", bank, "account:", account, "characterId:", characterId)
 
@@ -202,7 +202,7 @@ BccUtils.RPC:Register('Feather:Banks:GetAccount', function(params, cb, src)
         return
     end
     local characterId = char.charIdentifier
-    local accId = tonumber(params and params.account)
+    local accId = NormalizeId(params and params.account)
     local lockAccount = params and params.lockAccount
 
     devPrint("GetAccount inputs -> accId:", accId, "characterId:", characterId, "lockAccount:", lockAccount)
@@ -262,7 +262,7 @@ end)
 BccUtils.RPC:Register('Feather:Banks:UnlockAccount', function(params, cb, src)
     devPrint("UnlockAccount RPC called. src=", src, "params=", params)
 
-    local accId = tonumber(params and params.account)
+    local accId = NormalizeId(params and params.account)
     if not accId then
         devPrint("UnlockAccount: invalid account id.")
         NotifyClient(src, _U('error_invalid_account_id'), 'error', 4000)
@@ -284,7 +284,7 @@ end)
 BccUtils.RPC:Register('Feather:Banks:GetAccountAccessList', function(params, cb, src)
     devPrint("GetAccountAccessList RPC called. src=", src, "params=", params)
 
-    local account = tonumber(params.account)
+    local account = NormalizeId(params.account)
     devPrint("Parsed account ID:", account)
 
     if not account then
@@ -334,7 +334,7 @@ BccUtils.RPC:Register('Feather:Banks:GiveAccountAccess', function(params, cb, sr
         return
     end
     local requesterId = user.getUsedCharacter.charIdentifier
-    local account = tonumber(params and params.account)
+    local account = NormalizeId(params and params.account)
     -- Expect VORP character identifier (charidentifier) from client
     local otherCharacter = tonumber(params and params.character)
     if not otherCharacter then
@@ -406,7 +406,7 @@ BccUtils.RPC:Register('Feather:Banks:RemoveAccountAccess', function(params, cb, 
     end
     local requesterId = user.getUsedCharacter.charIdentifier
 
-    local account = tonumber(params.account)
+    local account = NormalizeId(params.account)
     local target = tonumber(params.character)
 
     devPrint("Parsed inputs → account:", account, "target:", target, "requesterId:", requesterId)
@@ -457,7 +457,7 @@ BccUtils.RPC:Register('Feather:Banks:DepositCash', function(params, cb, src)
     end
     local char = user.getUsedCharacter
 
-    local account        = tonumber(params and params.account)
+    local account        = NormalizeId(params and params.account)
     local amount         = tonumber(params and params.amount)
     local description    = (params and params.description) or "No description provided"
     local currentDollars = tonumber(char.money)
@@ -513,7 +513,7 @@ BccUtils.RPC:Register('Feather:Banks:DepositGold', function(params, cb, src)
     end
     local char = user.getUsedCharacter
 
-    local account     = tonumber(params and params.account)
+    local account     = NormalizeId(params and params.account)
     local amount      = tonumber(params and params.amount)
     local description = (params and params.description) or "No description provided"
     local currentGold = tonumber(char.gold)
@@ -568,7 +568,7 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawCash', function(params, cb, src)
     end
     local char = user.getUsedCharacter
 
-    local account     = tonumber(params and params.account)
+    local account     = NormalizeId(params and params.account)
     local amount      = tonumber(params and params.amount)
     local description = (params and params.description) or "No description provided"
 
@@ -624,7 +624,7 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawGold', function(params, cb, src)
     end
     local char = user.getUsedCharacter
 
-    local account     = tonumber(params and params.account)
+    local account     = NormalizeId(params and params.account)
     local amount      = tonumber(params and params.amount)
     local description = (params and params.description) or "No description provided"
 
@@ -687,9 +687,9 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
     end
     local char = user.getUsedCharacter
 
-    local fromAccountId = tonumber(params and params.fromAccount)
+    local fromAccountId = NormalizeId(params and params.fromAccount)
     local toAccountNumber = params and params.toAccountNumber
-    local toAccountId = tonumber(params and params.toAccountId)
+    local toAccountId = NormalizeId(params and params.toAccountId)
     local amount = tonumber(params and params.amount)
     local description = (params and params.description) or "Bank transfer"
 
@@ -744,7 +744,7 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
 
     devPrint("Loaded toAcc -> id:", toAcc.id, "bank:", toAcc.bank_id, "cash:", toAcc.cash)
 
-    if tonumber(toAcc.id) == tonumber(fromAcc.id) then
+    if IdsEqual(toAcc.id, fromAcc.id) then
         NotifyClient(src, _U('error_same_account_transfer'), 'error', 4000)
         cb(false)
         return
@@ -752,7 +752,7 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
 
     -- Calculate fee if cross-bank
     local feePercent = 0.0
-    if tonumber(fromAcc.bank_id) ~= tonumber(toAcc.bank_id) then
+    if not IdsEqual(fromAcc.bank_id, toAcc.bank_id) then
         feePercent = tonumber(Config.Transfer.CrossBankFeePercent or 0.0) or 0.0
     end
 

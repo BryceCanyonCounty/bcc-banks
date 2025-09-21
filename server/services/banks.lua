@@ -40,7 +40,8 @@ BccUtils.RPC:Register('Feather:Banks:CreateBank', function(params, res, src)
         return
     end
 
-    local ok = MySQL.query.await('INSERT INTO `bcc_banks` (name, x, y, z, h) VALUES (?, ?, ?, ?, ?);', { name, x, y, z, heading })
+    local bankId = BccUtils.UUID()
+    local ok = MySQL.query.await('INSERT INTO `bcc_banks` (id, name, x, y, z, h) VALUES (?, ?, ?, ?, ?, ?);', { bankId, name, x, y, z, heading })
     if ok == nil then
         NotifyClient(src, _U('admin_action_failed') or 'Action failed.', 'error', 3500)
         res(false)

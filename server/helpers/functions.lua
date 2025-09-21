@@ -6,6 +6,25 @@ function NotifyClient(src, message, type, duration)
     }, src)
 end
 
+function NormalizeId(value)
+    if value == nil then return nil end
+    if type(value) == 'number' then
+        if value ~= value then return nil end
+        return string.format('%.0f', value)
+    end
+    local str = tostring(value)
+    str = str:match('^%s*(.-)%s*$') or str
+    if str == '' then return nil end
+    return str
+end
+
+function IdsEqual(left, right)
+    local a = NormalizeId(left)
+    local b = NormalizeId(right)
+    if not a or not b then return false end
+    return a == b
+end
+
 if Config.devMode then
     function devPrint(...)
         local args = { ... }

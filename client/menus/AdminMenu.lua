@@ -220,7 +220,7 @@ function OpenAdminHoursMenu(Parent, bank)
 
     -- Prefetch hours (no fetch button)
     do
-        local bankId = tonumber(bankIdValue) or (bank and tonumber(bank.id))
+        local bankId = NormalizeId(bankIdValue) or (bank and NormalizeId(bank.id))
         if bankId then
             local ok, data = BccUtils.RPC:CallAsync('Feather:Banks:Admin:GetHours', { bank = bankId })
             if ok and data then
@@ -240,7 +240,7 @@ function OpenAdminHoursMenu(Parent, bank)
         start = hoursActive,
         slot = 'content',
     }, function(data)
-        local bankId = tonumber(bankIdValue) or (bank and tonumber(bank.id))
+        local bankId = NormalizeId(bankIdValue) or (bank and NormalizeId(bank.id))
         if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
         local ok = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ToggleHours', { bank = bankId, active = data.value and true or false })
         Notify(ok and (data.value and (_U('admin_hours_enabled') or 'Hours enabled.') or (_U('admin_hours_disabled') or 'Hours disabled.')) or _U('admin_action_failed'), ok and 'success' or 'error', 3500)
@@ -254,7 +254,7 @@ function OpenAdminHoursMenu(Parent, bank)
         closeVal = data.value
     end)
     Page:RegisterElement('button', { label = _U('admin_set_hours_button') or 'Set Hours', style = {} }, function()
-        local bankId = tonumber(bankIdValue) or (bank and tonumber(bank.id))
+        local bankId = NormalizeId(bankIdValue) or (bank and NormalizeId(bank.id))
         local openH = tonumber(openVal)
         local closeH = tonumber(closeVal)
         if not bankId or openH == nil or closeH == nil then Notify(_U('admin_invalid_hours_input') or 'Enter valid bank/hours', 3000) return end
@@ -301,7 +301,7 @@ function OpenAdminRatesMenu(Parent, bank)
         label = _U('admin_get_bank_rate_button'),
         style = {}
     }, function()
-        local bankId = tonumber(bankIdValue)
+        local bankId = NormalizeId(bankIdValue)
         if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
         local ok, rate = BccUtils.RPC:CallAsync('Feather:Banks:Admin:GetBankRate', { bank = bankId })
         local msg = ok and (_U('admin_current_rate') .. ' ' .. (rate and toFixed(rate, 2) .. '%' or _U('admin_rate_not_set'))) or _U('admin_action_failed')
@@ -318,7 +318,7 @@ function OpenAdminRatesMenu(Parent, bank)
         label = _U('admin_set_bank_rate_button'),
         style = {}
     }, function()
-        local bankId = tonumber(bankIdValue)
+        local bankId = NormalizeId(bankIdValue)
         local rate = tonumber(newRateValue)
         if not bankId or not rate then Notify(_U('admin_invalid_input'), 3000) return end
         local ok = BccUtils.RPC:CallAsync('Feather:Banks:Admin:SetBankRate', { bank = bankId, rate = rate })
@@ -489,7 +489,7 @@ function OpenAdminAccountsMenu(Parent, bank)
         label = _U('admin_fetch_button'),
         style = {}
     }, function()
-        local bankId = tonumber(bankIdValue)
+        local bankId = NormalizeId(bankIdValue)
         if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
         local ok, rows = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ListAccounts', { bank = bankId })
         if not ok then Notify(_U('admin_action_failed'), 3000) return end
@@ -551,7 +551,7 @@ function OpenAdminLoansMenu(Parent, bank)
         label = _U('admin_fetch_button'),
         style = {}
     }, function()
-        local bankId = tonumber(bankIdValue)
+        local bankId = NormalizeId(bankIdValue)
         if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
         local ok, rows = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ListLoans', { bank = bankId })
         if not ok then Notify(_U('admin_action_failed'), 3000) return end
@@ -569,7 +569,7 @@ function OpenAdminLoansMenu(Parent, bank)
         label = _U('admin_fetch_pending_button') or 'Fetch Pending Loans',
         style = {}
     }, function()
-        local bankId = tonumber(bankIdValue)
+        local bankId = NormalizeId(bankIdValue)
         if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
         local ok, rows = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ListPendingLoans', { bank = bankId })
         if not ok then Notify(_U('admin_action_failed'), 3000) return end
@@ -603,7 +603,7 @@ function OpenAdminLoansMenu(Parent, bank)
                     label = _U('admin_approve_button') or 'Approve',
                     style = {}
                 }, function()
-                    local okA = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ApproveLoan', { loan = r.id })
+                    local okA = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ApproveLoan', { loan = NormalizeId(r.id) })
                     if okA then Notify(_U('admin_approved_notify') or 'Approved', 2500) end
                     OpenAdminLoansMenu(Parent, bank)
                 end)
@@ -611,7 +611,7 @@ function OpenAdminLoansMenu(Parent, bank)
                     label = _U('admin_reject_button') or 'Reject',
                     style = {}
                 }, function()
-                    local okR = BccUtils.RPC:CallAsync('Feather:Banks:Admin:RejectLoan', { loan = r.id })
+                    local okR = BccUtils.RPC:CallAsync('Feather:Banks:Admin:RejectLoan', { loan = NormalizeId(r.id) })
                     if okR then Notify(_U('admin_rejected_notify') or 'Rejected', 2500) end
                     OpenAdminLoansMenu(Parent, bank)
                 end)
@@ -685,7 +685,7 @@ function OpenAdminSDBsMenu(Parent, bank)
         label = _U('admin_fetch_button'),
         style = {}
     }, function()
-        local bankId = tonumber(bankIdValue)
+        local bankId = NormalizeId(bankIdValue)
         if not bankId then Notify(_U('admin_invalid_bank_id'), 3000) return end
         local ok, rows = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ListSDBs', { bank = bankId })
         if not ok then Notify(_U('admin_action_failed'), 3000) return end

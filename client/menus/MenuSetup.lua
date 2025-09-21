@@ -1,9 +1,19 @@
+local function getBankId(bank)
+    return bank and NormalizeId(bank.id) or nil
+end
+
 function OpenUI(bank)
-    if BccUtils.RPC:CallAsync('Feather:Banks:GetBankerBusy', { bank = bank.id }) then
+    local bankId = getBankId(bank)
+    if not bankId then
+        Notify(_U('admin_invalid_bank_id') or 'Invalid bank id.', 'error', 3500)
+        return
+    end
+
+    if BccUtils.RPC:CallAsync('Feather:Banks:GetBankerBusy', { bank = bankId }) then
         Notify(_U("banker_busy_notify"), 4000)
         return
     end
-    local MainPage = FeatherBankMenu:RegisterPage('bank:page:hub:' .. tostring(bank.id))
+    local MainPage = FeatherBankMenu:RegisterPage('bank:page:hub:' .. tostring(bankId))
     MainPage:RegisterElement('header', {
         value = _U("banking_header"),
         slot = "header"
@@ -56,7 +66,7 @@ function OpenUI(bank)
         style = {}
     })
     FeatherBankMenu:Open({ startupPage = MainPage })
-    BccUtils.RPC:Notify('Feather:Banks:SetBankerBusy', { bank = bank.id })
+    BccUtils.RPC:Notify('Feather:Banks:SetBankerBusy', { bank = bankId })
 end
 
 function OpenTransactionsPage(acc, ParentPage)
@@ -74,7 +84,7 @@ function OpenTransactionsPage(acc, ParentPage)
         slot = 'header',
         style = {}
     })
-    local ok, data = BccUtils.RPC:CallAsync('Feather:Banks:GetTransactions', { account = tonumber(acc.id) })
+    local ok, data = BccUtils.RPC:CallAsync('Feather:Banks:GetTransactions', { account = NormalizeId(acc.id) })
     devPrint("RPC call status:", ok)
     if not ok then
         local msg = (data and data.message) and data.message or _U("failed_fetch_transactions")
@@ -276,7 +286,7 @@ function OpenLoanApplyForm(account, bank, ParentPage)
     end)
 
     -- Fetch server-defined interest rate for this character/account
-    local okRate, rate = BccUtils.RPC:CallAsync('Feather:Banks:GetLoanRate', { account = account.id })
+    local okRate, rate = BccUtils.RPC:CallAsync('Feather:Banks:GetLoanRate', { account = NormalizeId(account.id) })
     rate = tonumber(rate) or 10.0
     LoanApplyFormPage:RegisterElement('textdisplay', {
         value = _U('loan_interest_label') .. ': ' .. tostring(rate) .. '%',
@@ -340,7 +350,7 @@ function OpenLoanApplyForm(account, bank, ParentPage)
             label = _U('confirm_button')
         }, function()
             local ok = BccUtils.RPC:CallAsync('Feather:Banks:CreateLoan', {
-                account = account.id,
+                account = NormalizeId(account.id),
                 amount = amount,
                 duration = duration
             })
@@ -564,7 +574,7 @@ function OpenLoansListPage(account, bank, ParentPage)
     })
     LoansListPage:RegisterElement('line', { slot = 'header', style = {} })
 
-    local ok, loans = BccUtils.RPC:CallAsync('Feather:Banks:GetLoans', { account = account.id })
+    local ok, loans = BccUtils.RPC:CallAsync('Feather:Banks:GetLoans', { account = NormalizeId(account.id) })
     loans = loans or {}
     if not ok or #loans == 0 then
         LoansListPage:RegisterElement('textdisplay', {
@@ -601,18 +611,24 @@ function OpenLoansListPage(account, bank, ParentPage)
 end
 
 function OpenLoanDetailsPage(account, bank, loanId, ParentPage)
-    local ok, info = BccUtils.RPC:CallAsync('Feather:Banks:GetLoan', { loan = loanId })
+    local loanIdStr = NormalizeId(loanId)
+    if not loanIdStr then
+        Notify(_U('failed_fetch_loan'), 4000)
+        return
+    end
+
+    local ok, info = BccUtils.RPC:CallAsync('Feather:Banks:GetLoan', { loan = loanIdStr })
     if not ok or not info then
         Notify(_U('failed_fetch_loan'), 4000)
         return
     end
 
-    local LoanDetailsPage = FeatherBankMenu:RegisterPage('bank:page:loans:details:' .. tostring(loanId))
+    local LoanDetailsPage = FeatherBankMenu:RegisterPage('bank:page:loans:details:' .. tostring(loanIdStr))
     LoanDetailsPage:RegisterElement('header', {
         value = _U('loan_details_header'),
         slot  = 'header'
     })
-    LoanDetailsPage:RegisterElement('subheader', { value = _U('loan_label') .. ' #' .. tostring(loanId), slot = 'header' })
+    LoanDetailsPage:RegisterElement('subheader', { value = _U('loan_label') .. ' #' .. tostring(loanIdStr), slot = 'header' })
     LoanDetailsPage:RegisterElement('line', { slot = 'header', style = {} })
 
     local html = [[
@@ -638,7 +654,7 @@ function OpenLoanDetailsPage(account, bank, loanId, ParentPage)
             Notify(_U('invalid_repay_amount'), 4000)
             return
         end
-        local ConfirmPage = FeatherBankMenu:RegisterPage('bank:page:loans:repay:confirm:' .. tostring(loanId))
+        local ConfirmPage = FeatherBankMenu:RegisterPage('bank:page:loans:repay:confirm:' .. tostring(loanIdStr))
     ConfirmPage:RegisterElement('header', {
         value = _U('confirm_repay_header'),
         slot  = 'header'
@@ -662,14 +678,14 @@ function OpenLoanDetailsPage(account, bank, loanId, ParentPage)
             return s
         end
         ConfirmPage:RegisterElement('textdisplay', {
-            value = _U('confirm_repay_text', toFixed(amt, 2), tostring(loanId)),
+            value = _U('confirm_repay_text', toFixed(amt, 2), tostring(loanIdStr)),
             style = { ['text-align'] = 'center' }
         })
         ConfirmPage:RegisterElement('button', {
             label = _U('confirm_button')
         }, function()
-            BccUtils.RPC:CallAsync('Feather:Banks:RepayLoan', { loan = loanId, amount = amt })
-            OpenLoanDetailsPage(account, bank, loanId, ParentPage)
+            BccUtils.RPC:CallAsync('Feather:Banks:RepayLoan', { loan = loanIdStr, amount = amt })
+            OpenLoanDetailsPage(account, bank, loanIdStr, ParentPage)
         end)
         ConfirmPage:RegisterElement('line', { slot = 'footer', style = {} })
         ConfirmPage:RegisterElement('button', {
@@ -677,7 +693,7 @@ function OpenLoanDetailsPage(account, bank, loanId, ParentPage)
             slot  = 'footer',
             style = {}
         }, function()
-            OpenLoanDetailsPage(account, bank, loanId, ParentPage)
+            OpenLoanDetailsPage(account, bank, loanIdStr, ParentPage)
         end)
         ConfirmPage:RegisterElement('bottomline', {
             slot  = 'footer',
@@ -703,18 +719,24 @@ end
 
 -- Loan Details without account context
 function OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
-    local ok, info = BccUtils.RPC:CallAsync('Feather:Banks:GetLoan', { loan = loanId })
+    local loanIdStr = NormalizeId(loanId)
+    if not loanIdStr then
+        Notify(_U('failed_fetch_loan'), 4000)
+        return
+    end
+
+    local ok, info = BccUtils.RPC:CallAsync('Feather:Banks:GetLoan', { loan = loanIdStr })
     if not ok or not info then
         Notify(_U('failed_fetch_loan'), 4000)
         return
     end
 
-    local LoanDetailsNoAccountPage = FeatherBankMenu:RegisterPage('bank:page:loans:details:noacct:' .. tostring(loanId))
+    local LoanDetailsNoAccountPage = FeatherBankMenu:RegisterPage('bank:page:loans:details:noacct:' .. tostring(loanIdStr))
     LoanDetailsNoAccountPage:RegisterElement('header', {
         value = _U('loan_details_header'),
         slot  = 'header'
     })
-    LoanDetailsNoAccountPage:RegisterElement('subheader', { value = _U('loan_label') .. ' #' .. tostring(loanId), slot = 'header' })
+    LoanDetailsNoAccountPage:RegisterElement('subheader', { value = _U('loan_label') .. ' #' .. tostring(loanIdStr), slot = 'header' })
     LoanDetailsNoAccountPage:RegisterElement('line', { slot = 'header', style = {} })
 
     local html = [[
@@ -832,7 +854,7 @@ function OpenLoanClaimSelectAccount(bank, loanId, ParentPage)
             label = account.account_name,
             style = {}
         }, function()
-                local success = BccUtils.RPC:CallAsync('Feather:Banks:ClaimLoanDisbursement', { loan = loanId, account = account.id })
+                local success = BccUtils.RPC:CallAsync('Feather:Banks:ClaimLoanDisbursement', { loan = NormalizeId(loanId), account = NormalizeId(account.id) })
                 if success then
                     Notify(_U('loan_claim_success') or 'Funds transferred to account.', 'success', 4000)
                 end

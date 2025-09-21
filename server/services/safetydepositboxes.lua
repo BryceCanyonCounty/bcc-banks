@@ -14,7 +14,7 @@ BccUtils.RPC:Register('Feather:Banks:GetSDBs', function(params, cb, src)
         return
     end
     local characterId = char.charIdentifier
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
 
     if not characterId or not bankId then
         devPrint("GetSDBs: invalid inputs", "characterId=", characterId, "bankId=", bankId)
@@ -46,7 +46,7 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
     -- inputs
     local characterId = char.charIdentifier          -- adjust if your framework uses a different name
     local name        = params and params.name
-    local bank        = tonumber(params and params.bank)
+    local bank        = NormalizeId(params and params.bank)
     local sizeKey     = params and params.size
     local payWith     = (params and params.payWith) or "cash"  -- "cash" | "gold"
 
@@ -229,7 +229,7 @@ BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
         return
     end
     local characterId = char.charIdentifier
-    local sdbId = tonumber(params and params.sdb_id)
+    local sdbId = NormalizeId(params and params.sdb_id)
 
     if not characterId or not sdbId then
         devPrint("OpenSDB: invalid inputs", "characterId=", characterId, "sdbId=", sdbId)
@@ -283,7 +283,7 @@ BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
 end)
 
 BccUtils.RPC:Register('Feather:Banks:GetSDBAccessList', function(params, cb, src)
-    local sdbId = tonumber(params and params.sdb_id)
+    local sdbId = NormalizeId(params and params.sdb_id)
     if not sdbId then
         devPrint("GetSDBAccessList: invalid sdbId", params and params.sdb_id)
         NotifyClient(src, _U('error_invalid_sdb_id'), 'error', 4000)
@@ -337,7 +337,7 @@ BccUtils.RPC:Register('Feather:Banks:AddSDBAccess', function(params, cb, src)
         end
         requesterId = ch.charIdentifier
     end
-    local sdbId         = tonumber(params and params.sdb_id)
+    local sdbId         = NormalizeId(params and params.sdb_id)
     -- Expect a VORP character identifier (charidentifier). Keep compatibility with older param name 'user_src'
     local otherCharId   = tonumber(params and params.character) or tonumber(params and params.user_src)
     if not otherCharId then
@@ -419,7 +419,7 @@ BccUtils.RPC:Register('Feather:Banks:RemoveSDBAccess', function(params, cb, src)
     end
     local requesterId = user.getUsedCharacter.charIdentifier
 
-    local sdbId = tonumber(params and params.sdb_id)
+    local sdbId = NormalizeId(params and params.sdb_id)
     local targetCharId = tonumber(params and params.character)
 
     devPrint("Parsed inputs → sdbId:", sdbId, "target:", targetCharId, "requesterId:", requesterId)

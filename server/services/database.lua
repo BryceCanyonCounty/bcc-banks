@@ -2,7 +2,7 @@ CreateThread(function()
     -- bcc_banks
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_banks` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `id` VARCHAR(36) NOT NULL,
             `name` VARCHAR(255) NOT NULL UNIQUE,
             `x` DECIMAL(15,2) NOT NULL,
             `y` DECIMAL(15,2) NOT NULL,
@@ -17,7 +17,7 @@ CreateThread(function()
     ]])
 
     -- Ensure column exists for existing installations (add if missing)
-    local col = MySQL.query.await([[ 
+    local col = MySQL.query.await([[
         SELECT COUNT(*) AS cnt
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
@@ -33,10 +33,10 @@ CreateThread(function()
     -- bcc_accounts (no FK to characters)
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_accounts` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `id` VARCHAR(36) NOT NULL,
             `account_number` CHAR(36) NOT NULL,
             `name` VARCHAR(255) NOT NULL,
-            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `bank_id` VARCHAR(36) NOT NULL,
             `owner_id` BIGINT UNSIGNED NOT NULL,
             `cash` DOUBLE(15,2) DEFAULT 0.0,
             `gold` DOUBLE(15,2) DEFAULT 0.0,
@@ -54,7 +54,7 @@ CreateThread(function()
     -- bcc_accounts_access
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_accounts_access` (
-            `account_id` BIGINT UNSIGNED NOT NULL,
+            `account_id` VARCHAR(36) NOT NULL,
             `character_id` BIGINT UNSIGNED NOT NULL,
             `level` INT UNSIGNED DEFAULT 2,
             PRIMARY KEY (`account_id`, `character_id`),
@@ -69,9 +69,9 @@ CreateThread(function()
     -- bcc_loans (no FK to characters)
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_loans` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `account_id` BIGINT UNSIGNED NULL,
-            `bank_id` BIGINT UNSIGNED NULL,
+            `id` VARCHAR(36) NOT NULL,
+            `account_id` VARCHAR(36) NULL,
+            `bank_id` VARCHAR(36) NULL,
             `character_id` BIGINT UNSIGNED NOT NULL,
             `amount` DOUBLE(15,2) NOT NULL,
             `interest` DOUBLE(15,2) NOT NULL,
@@ -79,7 +79,7 @@ CreateThread(function()
             `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
             `approved_by` BIGINT UNSIGNED NULL,
             `approved_at` DATETIME NULL,
-            `disbursed_account_id` BIGINT UNSIGNED NULL,
+            `disbursed_account_id` VARCHAR(36) NULL,
             `disbursed_at` DATETIME NULL,
             `last_game_day` INT NULL,
             `game_days_elapsed` INT UNSIGNED NOT NULL DEFAULT 0,
@@ -102,8 +102,8 @@ CreateThread(function()
     -- bcc_loans_payments
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_loans_payments` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `loan_id` BIGINT UNSIGNED NOT NULL,
+            `id` VARCHAR(36) NOT NULL,
+            `loan_id` VARCHAR(36) NOT NULL,
             `amount` DOUBLE(15,2) NOT NULL,
             `date_due` DATETIME NOT NULL,
             `is_paid` BOOLEAN NOT NULL DEFAULT FALSE,
@@ -121,7 +121,7 @@ CreateThread(function()
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_loan_interest_rates` (
             `character_id` BIGINT UNSIGNED NOT NULL,
-            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `bank_id` VARCHAR(36) NOT NULL,
             `interest` DOUBLE(15,2) NOT NULL,
             PRIMARY KEY (`character_id`, `bank_id`),
             KEY `idx_lir_bank` (`bank_id`),
@@ -132,7 +132,7 @@ CreateThread(function()
     -- bcc_bank_interest_rates (per-bank base rate used by admin UI)
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_bank_interest_rates` (
-            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `bank_id` VARCHAR(36) NOT NULL,
             `interest` DOUBLE(15,2) NOT NULL,
             PRIMARY KEY (`bank_id`),
             KEY `idx_bir_bank` (`bank_id`)
@@ -142,9 +142,9 @@ CreateThread(function()
     -- bcc_transactions (no FK to characters)
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_transactions` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            `account_id` BIGINT UNSIGNED,
-            `loan_id` BIGINT UNSIGNED,
+            `id` VARCHAR(36) NOT NULL,
+            `account_id` VARCHAR(36),
+            `loan_id` VARCHAR(36),
             `character_id` BIGINT UNSIGNED NOT NULL,
             `amount` DOUBLE(15,2) NOT NULL,
             `type` VARCHAR(255) NOT NULL,
@@ -162,9 +162,9 @@ CreateThread(function()
     -- bcc_safety_deposit_boxes (no FK to characters)
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_safety_deposit_boxes` (
-            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `id` VARCHAR(36) NOT NULL,
             `name` VARCHAR(255) NOT NULL,
-            `bank_id` BIGINT UNSIGNED NOT NULL,
+            `bank_id` VARCHAR(36) NOT NULL,
             `owner_id` BIGINT UNSIGNED NOT NULL,
             `size` VARCHAR(255) NOT NULL,
             `inventory_id` CHAR(36) NULL,
@@ -180,7 +180,7 @@ CreateThread(function()
     -- bcc_safety_deposit_boxes_access
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_safety_deposit_boxes_access` (
-            `safety_deposit_box_id` BIGINT UNSIGNED NOT NULL,
+            `safety_deposit_box_id` VARCHAR(36) NOT NULL,
             `character_id` BIGINT UNSIGNED NOT NULL,
             `level` INT UNSIGNED DEFAULT 2,
             PRIMARY KEY (`safety_deposit_box_id`, `character_id`),
@@ -195,12 +195,12 @@ CreateThread(function()
 
     -- Optional seed
     MySQL.query.await([[
-        INSERT IGNORE INTO `bcc_banks` (`name`, `x`, `y`, `z`, `h`, `blip`, `hours_active`, `open_hour`, `close_hour`)
+        INSERT IGNORE INTO `bcc_banks` (`id`, `name`, `x`, `y`, `z`, `h`, `blip`, `hours_active`, `open_hour`, `close_hour`)
         VALUES 
-        ('Valentine', -307.82, 773.96, 118.70, 2.88, -2128054417, 0, 7, 21),
-        ('BlackWater', -810.51, -1275.37, 43.64, 189.16, -2128054417, 0, 7, 21),
-        ('Rhodes', 1291.25, -1303.30, 77.04, 322.24, -2128054417, 0, 7, 21),
-        ('SaintDenis', 2644.15, -1296.16, 52.25, 111.40, -2128054417, 0, 7, 21);
+        (UUID(), 'Valentine', -307.82, 773.96, 118.70, 2.88, -2128054417, 0, 7, 21),
+        (UUID(), 'BlackWater', -810.51, -1275.37, 43.64, 189.16, -2128054417, 0, 7, 21),
+        (UUID(), 'Rhodes', 1291.25, -1303.30, 77.04, 322.24, -2128054417, 0, 7, 21),
+        (UUID(), 'SaintDenis', 2644.15, -1296.16, 52.25, 111.40, -2128054417, 0, 7, 21);
     ]])
 
     devPrint("Database tables for *bcc-banks* created successfully.")
