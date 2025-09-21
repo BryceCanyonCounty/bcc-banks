@@ -150,8 +150,10 @@ function OpenRemoveAccessPage(account, ParentPage)
         style = {}
     })
 
+    local accountId = NormalizeId(account.id)
+
     local ok, response = BccUtils.RPC:CallAsync("Feather:Banks:GetAccountAccessList", {
-        account = account.id
+        account = accountId
     })
 
     if not ok or not response or type(response) ~= "table" then return end
@@ -192,7 +194,7 @@ function OpenRemoveAccessPage(account, ParentPage)
                     style = {}
                 }, function()
                     local ok = BccUtils.RPC:CallAsync("Feather:Banks:RemoveAccountAccess", {
-                        account   = account.id,
+                        account   = accountId,
                         character = access.character_id
                     })
 

@@ -13,11 +13,12 @@ function GetAccountTransactions(account)
 end
 
 function AddAccountTransaction(account, character, amount, txType, description)
+    local txId = BccUtils.UUID()
     MySQL.query.await(
         'INSERT INTO `bcc_transactions` ' ..
-        '(`account_id`, `character_id`, `amount`, `type`, `description`) ' ..
-        'VALUES (?, ?, ?, ?, ?);',
-        { account, character, amount, txType, description }
+        '(`id`, `account_id`, `character_id`, `amount`, `type`, `description`) ' ..
+        'VALUES (?, ?, ?, ?, ?, ?);',
+        { txId, account, character, amount, txType, description }
     )
     return true
 end
@@ -34,11 +35,12 @@ function GetLoanTransactions(loan)
 end
 
 function AddLoanTransaction(loan, character, amount, txType, description)
+    local txId = BccUtils.UUID()
     MySQL.query.await(
         'INSERT INTO `bcc_transactions` ' ..
-        '(`loan_id`, `character_id`, `amount`, `type`, `description`) ' ..
-        'VALUES (?, ?, ?, ?, ?);',
-        { loan, character, amount, txType, description }
+        '(`id`, `loan_id`, `character_id`, `amount`, `type`, `description`) ' ..
+        'VALUES (?, ?, ?, ?, ?, ?);',
+        { txId, loan, character, amount, txType, description }
     )
     return true
 end

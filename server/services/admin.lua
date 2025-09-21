@@ -66,7 +66,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:GetBankRate', function(params, cb, sr
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     if not bankId then
         devPrint('[ADMIN] GetBankRate invalid bank id:', params and params.bank)
         NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
@@ -85,7 +85,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetBankRate', function(params, cb, sr
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     local rate = tonumber(params and params.rate)
     if not bankId or not rate then
         devPrint('[ADMIN] SetBankRate invalid input bankId/rate:', bankId, rate)
@@ -106,7 +106,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:GetCharRate', function(params, cb, sr
         return
     end
     local charId = tonumber(params and params.char)
-    local bankId = params and params.bank
+    local bankId = NormalizeId(params and params.bank)
     if not charId then
         devPrint('[ADMIN] GetCharRate invalid char id:', params and params.char)
         NotifyClient(src, _U('admin_invalid_char_id') or 'Invalid char id', 'error', 3500)
@@ -114,11 +114,10 @@ BccUtils.RPC:Register('Feather:Banks:Admin:GetCharRate', function(params, cb, sr
         return
     end
     local row
-    if bankId == nil or bankId == '' then
-        -- Use bank_id = 0 to represent global rate
-        row = MySQL.query.await('SELECT interest FROM `bcc_loan_interest_rates` WHERE character_id = ? AND bank_id = 0 LIMIT 1', { charId })
+    if not bankId or bankId == '0' then
+        -- Use bank_id = '0' to represent global rate
+        row = MySQL.query.await('SELECT interest FROM `bcc_loan_interest_rates` WHERE character_id = ? AND bank_id = ? LIMIT 1', { charId, '0' })
     else
-        bankId = tonumber(bankId)
         row = MySQL.query.await('SELECT interest FROM `bcc_loan_interest_rates` WHERE character_id = ? AND bank_id = ? LIMIT 1', { charId, bankId })
     end
     local rate = row and row[1] and row[1].interest
@@ -133,7 +132,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetCharRate', function(params, cb, sr
         return
     end
     local charId = tonumber(params and params.char)
-    local bankId = params and params.bank
+    local bankId = NormalizeId(params and params.bank)
     local rate = tonumber(params and params.rate)
     if not charId or not rate then
         devPrint('[ADMIN] SetCharRate invalid input charId/rate:', charId, rate)
@@ -141,11 +140,10 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetCharRate', function(params, cb, sr
         cb(false)
         return
     end
-    if bankId == nil or bankId == '' or tonumber(bankId) == 0 then
-        -- Store global rate with bank_id = 0
-        MySQL.query.await('INSERT INTO `bcc_loan_interest_rates` (character_id, bank_id, interest) VALUES (?, 0, ?) ON DUPLICATE KEY UPDATE interest = VALUES(interest)', { charId, rate })
+    if not bankId or bankId == '0' then
+        -- Store global rate with bank_id = '0'
+        MySQL.query.await('INSERT INTO `bcc_loan_interest_rates` (character_id, bank_id, interest) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE interest = VALUES(interest)', { charId, '0', rate })
     else
-        bankId = tonumber(bankId)
         MySQL.query.await('INSERT INTO `bcc_loan_interest_rates` (character_id, bank_id, interest) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE interest = VALUES(interest)', { charId, bankId, rate })
     end
     cb(true)
@@ -159,18 +157,17 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ClearCharRate', function(params, cb, 
         return
     end
     local charId = tonumber(params and params.char)
-    local bankId = params and params.bank
+    local bankId = NormalizeId(params and params.bank)
     if not charId then
         devPrint('[ADMIN] ClearCharRate invalid char id:', params and params.char)
         NotifyClient(src, _U('admin_invalid_char_id') or 'Invalid char id', 'error', 3500)
         cb(false)
         return
     end
-    if bankId == nil or bankId == '' then
-        -- Clear global rate stored with bank_id = 0
-        MySQL.query.await('DELETE FROM `bcc_loan_interest_rates` WHERE character_id = ? AND bank_id = 0', { charId })
+    if not bankId or bankId == '0' then
+        -- Clear global rate stored with bank_id = '0'
+        MySQL.query.await('DELETE FROM `bcc_loan_interest_rates` WHERE character_id = ? AND bank_id = ?', { charId, '0' })
     else
-        bankId = tonumber(bankId)
         MySQL.query.await('DELETE FROM `bcc_loan_interest_rates` WHERE character_id = ? AND bank_id = ?', { charId, bankId })
     end
     cb(true)
@@ -184,7 +181,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListAccounts', function(params, cb, s
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     if not bankId then
         devPrint('[ADMIN] ListAccounts invalid bank id:', params and params.bank)
         NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
@@ -202,7 +199,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListLoans', function(params, cb, src)
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     if not bankId then
         devPrint('[ADMIN] ListLoans invalid bank id:', params and params.bank)
         NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
@@ -227,7 +224,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListPendingLoans', function(params, c
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     if not bankId then
         devPrint('[ADMIN] ListPendingLoans invalid bank id:', params and params.bank)
         NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
@@ -313,7 +310,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListSDBs', function(params, cb, src)
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     if not bankId then
         devPrint('[ADMIN] ListSDBs invalid bank id:', params and params.bank)
         NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
@@ -333,7 +330,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:GetHours', function(params, cb, src)
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     if not bankId then
         NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
         cb(false)
@@ -354,7 +351,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetHours', function(params, cb, src)
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     local active = params and params.active
     local openH = tonumber(params and params.open)
     local closeH = tonumber(params and params.close)
@@ -390,7 +387,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ToggleHours', function(params, cb, sr
         cb(false)
         return
     end
-    local bankId = tonumber(params and params.bank)
+    local bankId = NormalizeId(params and params.bank)
     local active = params and params.active
     if not bankId or type(active) ~= 'boolean' then
         NotifyClient(src, _U('admin_invalid_hours_toggle') or 'Enter valid bank id and toggle.', 'error', 3500)

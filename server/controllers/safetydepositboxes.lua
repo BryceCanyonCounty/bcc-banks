@@ -96,16 +96,17 @@ function CreateSDB(name, ownerId, bankId, sizeKey)
     end
 
     -- insert -> id
-    local newId = MySQL.insert.await(
-        'INSERT INTO `bcc_safety_deposit_boxes` (`name`, `bank_id`, `owner_id`, `size`) VALUES (?,?,?,?)',
-        { name, bankId, ownerId, resolvedKey }
+    local boxId = BccUtils.UUID()
+    local inserted = MySQL.query.await(
+        'INSERT INTO `bcc_safety_deposit_boxes` (`id`, `name`, `bank_id`, `owner_id`, `size`) VALUES (?,?,?,?,?)',
+        { boxId, name, bankId, ownerId, resolvedKey }
     )
-    if not newId or newId <= 0 then
+    if not inserted then
         return false, "Could not create SDB."
     end
 
     -- load box row
-    local box = MySQL.single.await('SELECT * FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;', { newId })
+    local box = MySQL.single.await('SELECT * FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;', { boxId })
     if not box then
         return false, "SDB row not found after insert."
     end
