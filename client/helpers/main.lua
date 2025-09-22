@@ -50,7 +50,16 @@ function NormalizeId(value)
     if value == nil then return nil end
     if type(value) == 'number' then
         if value ~= value then return nil end
-        return string.format('%.0f', value)
+        if math.type and math.type(value) == 'integer' then
+            return tostring(value)
+        end
+        local rounded
+        if value >= 0 then
+            rounded = math.floor(value + 0.5)
+        else
+            rounded = math.ceil(value - 0.5)
+        end
+        return tostring(rounded)
     end
     local str = tostring(value)
     str = str:match('^%s*(.-)%s*$') or str

@@ -282,6 +282,39 @@ BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
     cb(true)
 end)
 
+BccUtils.RPC:Register('Feather:Banks:Admin:OpenSDB', function(params, cb, src)
+    if not IsBankAdmin or not IsBankAdmin(src) then
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local sdbId = NormalizeId(params and params.sdb_id)
+    if not sdbId then
+        NotifyClient(src, _U('error_invalid_sdb_id') or 'Invalid SDB id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local row = MySQL.query.await(
+        'SELECT `inventory_id`,`name`,`size` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
+        { sdbId }
+    )
+    row = row and row[1] or nil
+    if not row then
+        NotifyClient(src, _U('error_sdb_not_found') or 'SDB not found', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local invId, _ = ensureSDBInventoryRegistered(sdbId, row.inventory_id, row.name, row.size)
+    if not row.inventory_id or row.inventory_id ~= invId then
+        MySQL.query.await('UPDATE `bcc_safety_deposit_boxes` SET `inventory_id`=? WHERE `id`=?', { invId, sdbId })
+    end
+    exports.vorp_inventory:openInventory(src, tostring(invId))
+    cb(true)
+end)
+
 BccUtils.RPC:Register('Feather:Banks:GetSDBAccessList', function(params, cb, src)
     local sdbId = NormalizeId(params and params.sdb_id)
     if not sdbId then

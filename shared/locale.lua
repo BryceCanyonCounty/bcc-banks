@@ -5,7 +5,11 @@ local translationCache = {} -- Cache for translations
 function _(str, ...) -- Translate string
     -- Check cache first
     if translationCache[str] then
-        return string.format(translationCache[str], ...)
+        if select('#', ...) > 0 then
+            local ok, out = pcall(string.format, translationCache[str], ...)
+            if ok then return out end
+        end
+        return translationCache[str]
     end
 
     local lang = Config.defaultlang
@@ -14,17 +18,18 @@ function _(str, ...) -- Translate string
     if Locales[lang] ~= nil then
         if Locales[lang][str] ~= nil then
             translationCache[str] = Locales[lang][str] -- Cache the translation for faster future access
-            if ... then
-                return string.format(Locales[lang][str], ...)
-            else
-                return Locales[lang][str]
+            if select('#', ...) > 0 then
+                local ok, out = pcall(string.format, Locales[lang][str], ...)
+                if ok then return out end
             end
+            return Locales[lang][str]
         elseif Locales[defaultLang] ~= nil and Locales[defaultLang][str] ~= nil then
-            if ... then
-                return string.format(Locales[defaultLang][str], ...)
-            else
-                return Locales[defaultLang][str]
+            translationCache[str] = Locales[defaultLang][str]
+            if select('#', ...) > 0 then
+                local ok, out = pcall(string.format, Locales[defaultLang][str], ...)
+                if ok then return out end
             end
+            return Locales[defaultLang][str]
         else
             return 'Translation [' .. lang .. '][' .. str .. '] and fallback [' .. defaultLang .. '] do not exist'
         end

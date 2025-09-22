@@ -52,13 +52,22 @@ function GetLoansForCharacterBank(character_id, bank_id)
     return rows or {}
 end
 
+local function roundCurrency(value)
+    value = tonumber(value) or 0
+    return math.floor(value * 100 + 0.5) / 100
+end
+
 function ComputeLoanOutstanding(loan_id)
     local loan = GetLoan(loan_id)
     if not loan then return nil end
-    local totalDue = (tonumber(loan.amount) or 0) * (1 + ((tonumber(loan.interest) or 0) / 100))
-    local repaid = SumLoanRepayments(loan_id)
+    local baseAmount = tonumber(loan.amount) or 0
+    local interestPercent = tonumber(loan.interest) or 0
+    local totalDue = roundCurrency(baseAmount * (1 + (interestPercent / 100)))
+    local repaid = roundCurrency(SumLoanRepayments(loan_id))
     local outstanding = totalDue - repaid
+    if math.abs(outstanding) < 0.005 then outstanding = 0 end
     if outstanding < 0 then outstanding = 0 end
+    outstanding = roundCurrency(outstanding)
     return {
         total_due = totalDue,
         repaid = repaid,
@@ -91,7 +100,8 @@ function RepayLoan(loan_id, account_id, character_id, amount)
     end
 
     -- Record the repayment against the loan
-    AddLoanTransaction(loan_id, character_id, amount, 'loan - repayment', 'Loan repayment from account')
+    local repayDesc = _U and _U('loan_repayment_account_desc') or 'Loan repayment from account'
+    AddLoanTransaction(loan_id, character_id, amount, 'loan - repayment', repayDesc)
 
     -- Mark loan paid if fully repaid
     local after = ComputeLoanOutstanding(loan_id)
@@ -118,7 +128,8 @@ function ApproveLoan(loan_id, approver_char_id)
         if not ok then
             return { status = false, message = 'Failed to disburse funds to account.' }
         end
-        AddLoanTransaction(loan.id, loan.character_id, amt, 'loan - disbursement', 'Loan disbursed to account')
+        local disburseDesc = _U and _U('loan_disbursement_desc') or 'Loan disbursed to account'
+        AddLoanTransaction(loan.id, loan.character_id, amt, 'loan - disbursement', disburseDesc)
         MySQL.query.await('UPDATE `bcc_loans` SET `disbursed_account_id` = ?, `disbursed_at` = NOW() WHERE `id` = ?', { loan.account_id, loan.id })
     else
         -- No immediate disbursement; player can claim to their chosen account later
@@ -164,7 +175,8 @@ function ClaimLoanToAccount(loan_id, account_id, character_id)
     if not ok then
         return { status = false, message = 'Unable to deposit into the selected account.' }
     end
-    AddLoanTransaction(loan.id, loan.character_id, amt, 'loan - disbursement', 'Loan disbursed to account (claimed)')
+        local claimDesc = _U and _U('loan_claim_transaction_desc') or 'Loan disbursed to account (claimed)'
+        AddLoanTransaction(loan.id, loan.character_id, amt, 'loan - disbursement', claimDesc)
     MySQL.query.await('UPDATE `bcc_loans` SET `disbursed_account_id` = ?, `disbursed_at` = NOW() WHERE `id` = ?', { account_id, loan.id })
     local updated = GetLoan(loan_id)
     return { status = true, loan = updated }

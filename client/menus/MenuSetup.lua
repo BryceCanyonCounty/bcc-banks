@@ -2,6 +2,97 @@ local function getBankId(bank)
     return bank and NormalizeId(bank.id) or nil
 end
 
+local function formatAmount(value)
+    value = tonumber(value) or 0
+    local rounded = math.floor(value * 100 + 0.5) / 100
+    local s = tostring(rounded)
+    local dot = string.find(s, '.', 1, true)
+    if not dot then
+        s = s .. '.00'
+    else
+        local decimals = #s - dot
+        if decimals == 1 then
+            s = s .. '0'
+        elseif decimals == 0 then
+            s = s .. '00'
+        end
+    end
+    return s
+end
+
+local function OpenLoanTransactionsPage(loanIdStr, parentPage)
+    if not loanIdStr then return end
+
+    local txPage = FeatherBankMenu:RegisterPage('bank:page:loans:transactions:' .. tostring(loanIdStr))
+    txPage:RegisterElement('header', {
+        value = _U('loan_transactions_header') or 'Loan Transactions',
+        slot  = 'header'
+    })
+    txPage:RegisterElement('line', { slot = 'header', style = {} })
+
+    local ok, txRows = BccUtils.RPC:CallAsync('Feather:Banks:GetLoanTransactions', { loan = loanIdStr })
+    txRows = (ok and txRows) or {}
+
+    if #txRows > 0 then
+        local txHtml = [[
+        <div style="padding:10px;">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f1f3f5;">
+                        <th style="text-align:left; padding:6px 4px;">]] .. (_U('loan_transactions_date') or 'Date') .. [[</th>
+                        <th style="text-align:left; padding:6px 4px;">]] .. (_U('loan_transactions_type') or 'Type') .. [[</th>
+                        <th style="text-align:left; padding:6px 4px;">]] .. (_U('loan_transactions_desc') or 'Description') .. [[</th>
+                        <th style="text-align:right; padding:6px 4px;">]] .. (_U('loan_transactions_amount') or 'Amount') .. [[</th>
+                    </tr>
+                </thead>
+                <tbody>
+        ]]
+        for _, row in ipairs(txRows) do
+            local dateStr = row.created_at_display or row.created_at or '-'
+            local typeStr = row.type or ''
+            local descStr = row.description or ''
+            local amountStr = row.amount_formatted or formatAmount(row.amount)
+            txHtml = txHtml .. [[
+                    <tr style="border-bottom:1px solid #dee2e6;">
+                        <td style="padding:6px 4px;">]] .. dateStr .. [[</td>
+                        <td style="padding:6px 4px;">]] .. typeStr .. [[</td>
+                        <td style="padding:6px 4px;">]] .. descStr .. [[</td>
+                        <td style="padding:6px 4px; text-align:right;">$]] .. amountStr .. [[</td>
+                    </tr>
+            ]]
+        end
+        txHtml = txHtml .. [[
+                </tbody>
+            </table>
+        </div>
+        ]]
+        txPage:RegisterElement('html', {
+            value = { txHtml },
+            slot  = 'content'
+        })
+    else
+        txPage:RegisterElement('textdisplay', {
+            value = _U('loan_transactions_empty') or 'No loan transactions recorded yet.',
+            slot  = 'content'
+        })
+    end
+
+    txPage:RegisterElement('line', { slot = 'footer', style = {} })
+    txPage:RegisterElement('button', {
+        label = _U('back_button'),
+        slot  = 'footer',
+        style = {}
+    }, function()
+        if parentPage then
+            parentPage:RouteTo()
+        else
+            FeatherBankMenu:Close()
+        end
+    end)
+    txPage:RegisterElement('bottomline', { slot = 'footer', style = {} })
+    FeatherBankMenu:Open({ startupPage = txPage })
+end
+
 function OpenUI(bank)
     local bankId = getBankId(bank)
     if not bankId then
@@ -537,7 +628,9 @@ function OpenLoansListPage_NoAccount(bank, ParentPage)
         for _, loan in ipairs(loans) do
             local status = tostring(loan.status or '')
             local statusTxt = status ~= '' and (' (' .. status .. ')') or ''
-            local label = _U('loan_label') .. ' #' .. tostring(loan.id) .. statusTxt
+            local createdText = loan.created_at_display or loan.created_at or '-'
+            local amountText = loan.amount_formatted or formatAmount(loan.amount)
+            local label = _U('loan_label') .. statusTxt .. ' - ' .. createdText .. ' | $' .. amountText
             LoansListNoAccountPage:RegisterElement('button', {
                 label = label,
                 style = {}
@@ -585,7 +678,9 @@ function OpenLoansListPage(account, bank, ParentPage)
         for _, loan in ipairs(loans) do
             local status = tostring(loan.status or '')
             local statusTxt = status ~= '' and (' (' .. status .. ')') or ''
-            local label = _U('loan_label') .. ' #' .. tostring(loan.id) .. statusTxt
+            local createdText = loan.created_at_display or loan.created_at or '-'
+            local amountText = loan.amount_formatted or formatAmount(loan.amount)
+            local label = _U('loan_label') .. statusTxt .. ' - ' .. createdText .. ' | $' .. amountText
             LoansListPage:RegisterElement('button', {
                 label = label,
                 style = {}
@@ -628,33 +723,50 @@ function OpenLoanDetailsPage(account, bank, loanId, ParentPage)
         value = _U('loan_details_header'),
         slot  = 'header'
     })
-    LoanDetailsPage:RegisterElement('subheader', { value = _U('loan_label') .. ' #' .. tostring(loanIdStr), slot = 'header' })
-    LoanDetailsPage:RegisterElement('line', { slot = 'header', style = {} })
-
-    local html = [[
+    LoanDetailsPage:RegisterElement('subheader', { 
+        value = _U('loan_label'), 
+        slot = 'header' 
+    })
+    LoanDetailsPage:RegisterElement('line', { 
+        slot = 'header', 
+        style = {} 
+    })
+    local summaryHtml = [[
         <div style="padding:10px;">
             <div><b>]] .. _U('total_due_label') .. [[</b> $]] .. tostring(info.total_due) .. [[</div>
             <div><b>]] .. _U('repaid_label') .. [[</b> $]] .. tostring(info.repaid) .. [[</div>
             <div><b>]] .. _U('outstanding_label') .. [[</b> $]] .. tostring(info.outstanding) .. [[</div>
         </div>
     ]]
-    LoanDetailsPage:RegisterElement('html', { value = { html } })
+    LoanDetailsPage:RegisterElement('html', { value = { summaryHtml } })
 
-    local repayValue = ''
-    LoanDetailsPage:RegisterElement('input', { label = _U('repay_amount_label'), placeholder = _U('repay_amount_placeholder'), style = {} }, function(data)
-        repayValue = data.value
-    end)
+    local loanData = info.loan or {}
+    local loanStatus = tostring(loanData.status or '')
+    local outstandingValue = tonumber(info.outstanding or 0) or 0
 
     LoanDetailsPage:RegisterElement('button', {
-        label = _U('repay_loan_button'),
+        label = _U('loan_transactions_button') or 'View Transactions',
         style = {}
     }, function()
-        local amt = tonumber(repayValue)
-        if not amt or amt <= 0 then
-            Notify(_U('invalid_repay_amount'), 4000)
-            return
-        end
-        local ConfirmPage = FeatherBankMenu:RegisterPage('bank:page:loans:repay:confirm:' .. tostring(loanIdStr))
+        OpenLoanTransactionsPage(loanIdStr, LoanDetailsPage)
+    end)
+
+    if outstandingValue > 0 and loanStatus ~= 'paid' then
+        local repayValue = ''
+        LoanDetailsPage:RegisterElement('input', { label = _U('repay_amount_label'), placeholder = _U('repay_amount_placeholder'), style = {} }, function(data)
+            repayValue = data.value
+        end)
+
+        LoanDetailsPage:RegisterElement('button', {
+            label = _U('repay_loan_button'),
+            style = {}
+        }, function()
+            local amt = tonumber(repayValue)
+            if not amt or amt <= 0 then
+                Notify(_U('invalid_repay_amount'), 4000)
+                return
+            end
+            local ConfirmPage = FeatherBankMenu:RegisterPage('bank:page:loans:repay:confirm:' .. tostring(loanIdStr))
     ConfirmPage:RegisterElement('header', {
         value = _U('confirm_repay_header'),
         slot  = 'header'
@@ -701,6 +813,12 @@ function OpenLoanDetailsPage(account, bank, loanId, ParentPage)
         })
         FeatherBankMenu:Open({ startupPage = ConfirmPage })
     end)
+    else
+        LoanDetailsPage:RegisterElement('textdisplay', {
+            value = _U('loan_paid_label') or 'Loan is fully repaid.',
+            slot  = 'content'
+        })
+    end
 
     LoanDetailsPage:RegisterElement('line', { slot = 'footer', style = {} })
     LoanDetailsPage:RegisterElement('button', {
@@ -739,14 +857,25 @@ function OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
     LoanDetailsNoAccountPage:RegisterElement('subheader', { value = _U('loan_label') .. ' #' .. tostring(loanIdStr), slot = 'header' })
     LoanDetailsNoAccountPage:RegisterElement('line', { slot = 'header', style = {} })
 
-    local html = [[
+    local summaryHtml = [[
         <div style="padding:10px;">
             <div><b>]] .. _U('total_due_label') .. [[</b> $]] .. tostring(info.total_due) .. [[</div>
             <div><b>]] .. _U('repaid_label') .. [[</b> $]] .. tostring(info.repaid) .. [[</div>
             <div><b>]] .. _U('outstanding_label') .. [[</b> $]] .. tostring(info.outstanding) .. [[</div>
         </div>
     ]]
-    LoanDetailsNoAccountPage:RegisterElement('html', { value = { html } })
+    LoanDetailsNoAccountPage:RegisterElement('html', { value = { summaryHtml } })
+
+    local loanData = info.loan or {}
+    local loanStatus = tostring(loanData.status or '')
+    local outstandingValue = tonumber(info.outstanding or 0) or 0
+
+    LoanDetailsNoAccountPage:RegisterElement('button', {
+        label = _U('loan_transactions_button') or 'View Transactions',
+        style = {}
+    }, function()
+        OpenLoanTransactionsPage(loanIdStr, LoanDetailsNoAccountPage)
+    end)
 
     -- If approved and not yet disbursed to an account, allow claiming to a selected account
     if info and info.loan and tostring(info.loan.status) == 'approved' and not info.loan.disbursed_account_id then
@@ -759,67 +888,74 @@ function OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
         end)
     end
 
-    local repayValue = ''
-    LoanDetailsNoAccountPage:RegisterElement('input', { label = _U('repay_amount_label'), placeholder = _U('repay_amount_placeholder'), style = {} }, function(data)
-        repayValue = data.value
-    end)
+    if outstandingValue > 0 and loanStatus ~= 'paid' then
+        local repayValue = ''
+        LoanDetailsNoAccountPage:RegisterElement('input', { label = _U('repay_amount_label'), placeholder = _U('repay_amount_placeholder'), style = {} }, function(data)
+            repayValue = data.value
+        end)
 
-    LoanDetailsNoAccountPage:RegisterElement('button', {
-        label = _U('repay_loan_button'),
-        style = {}
-    }, function()
-        local amt = tonumber(repayValue)
-        if not amt or amt <= 0 then
-            Notify(_U('invalid_repay_amount'), 4000)
-            return
-        end
-        local ConfirmPage = FeatherBankMenu:RegisterPage('bank:page:loans:repay:confirm:noacct:' .. tostring(loanId))
-    ConfirmPage:RegisterElement('header', {
-        value = _U('confirm_repay_header'),
-        slot  = 'header'
-    })
-        local function toFixed(n, decimals)
-            n = tonumber(n) or 0
-            local mult = 10 ^ (decimals or 0)
-            local v = math.floor(n * mult + 0.5) / mult
-            local s = tostring(v)
-            if decimals and decimals > 0 then
-                local dot = string.find(s, '.', 1, true)
-                if not dot then
-                    s = s .. '.' .. string.rep('0', decimals)
-                else
-                    local places = #s - dot
-                    if places < decimals then
-                        s = s .. string.rep('0', decimals - places)
+        LoanDetailsNoAccountPage:RegisterElement('button', {
+            label = _U('repay_loan_button'),
+            style = {}
+        }, function()
+            local amt = tonumber(repayValue)
+            if not amt or amt <= 0 then
+                Notify(_U('invalid_repay_amount'), 4000)
+                return
+            end
+            local ConfirmPage = FeatherBankMenu:RegisterPage('bank:page:loans:repay:confirm:noacct:' .. tostring(loanId))
+        ConfirmPage:RegisterElement('header', {
+            value = _U('confirm_repay_header'),
+            slot  = 'header'
+        })
+            local function toFixed(n, decimals)
+                n = tonumber(n) or 0
+                local mult = 10 ^ (decimals or 0)
+                local v = math.floor(n * mult + 0.5) / mult
+                local s = tostring(v)
+                if decimals and decimals > 0 then
+                    local dot = string.find(s, '.', 1, true)
+                    if not dot then
+                        s = s .. '.' .. string.rep('0', decimals)
+                    else
+                        local places = #s - dot
+                        if places < decimals then
+                            s = s .. string.rep('0', decimals - places)
+                        end
                     end
                 end
+                return s
             end
-            return s
-        end
-        ConfirmPage:RegisterElement('textdisplay', {
-            value = _U('confirm_repay_text', toFixed(amt, 2), tostring(loanId)),
-            style = { ['text-align'] = 'center' }
-        })
-        ConfirmPage:RegisterElement('button', {
-            label = _U('confirm_button')
-        }, function()
-            BccUtils.RPC:CallAsync('Feather:Banks:RepayLoan', { loan = loanId, amount = amt })
-            OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
+            ConfirmPage:RegisterElement('textdisplay', {
+                value = _U('confirm_repay_text', toFixed(amt, 2), tostring(loanId)),
+                style = { ['text-align'] = 'center' }
+            })
+            ConfirmPage:RegisterElement('button', {
+                label = _U('confirm_button')
+            }, function()
+                BccUtils.RPC:CallAsync('Feather:Banks:RepayLoan', { loan = loanId, amount = amt })
+                OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
+            end)
+            ConfirmPage:RegisterElement('line', { slot = 'footer', style = {} })
+            ConfirmPage:RegisterElement('button', {
+                label = _U('back_button'),
+                slot  = 'footer',
+                style = {}
+            }, function()
+                OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
+            end)
+            ConfirmPage:RegisterElement('bottomline', {
+                slot  = 'footer',
+                style = {}
+            })
+            FeatherBankMenu:Open({ startupPage = ConfirmPage })
         end)
-        ConfirmPage:RegisterElement('line', { slot = 'footer', style = {} })
-        ConfirmPage:RegisterElement('button', {
-            label = _U('back_button'),
-            slot  = 'footer',
-            style = {}
-        }, function()
-            OpenLoanDetailsPage_NoAccount(bank, loanId, ParentPage)
-        end)
-        ConfirmPage:RegisterElement('bottomline', {
-            slot  = 'footer',
-            style = {}
+    else
+        LoanDetailsNoAccountPage:RegisterElement('textdisplay', {
+            value = _U('loan_paid_label') or 'Loan is fully repaid.',
+            slot  = 'content'
         })
-        FeatherBankMenu:Open({ startupPage = ConfirmPage })
-    end)
+    end
 
     LoanDetailsNoAccountPage:RegisterElement('line', { slot = 'footer', style = {} })
     LoanDetailsNoAccountPage:RegisterElement('button', {

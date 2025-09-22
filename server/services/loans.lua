@@ -23,6 +23,26 @@ local function safeFormat(fmt, ...)
     return fmt
 end
 
+local function formatTimestamp(value)
+    if value == nil then return nil end
+    local num = tonumber(value)
+    if num then
+        if num > 1e12 then
+            num = num / 1000
+        end
+        return os.date('%Y-%m-%d %H:%M:%S', math.floor(num))
+    end
+    local str = tostring(value)
+    if str == '' then return nil end
+    return str
+end
+
+BccBanksInternal = BccBanksInternal or {}
+BccBanksInternal.getMailboxApi = getMailboxApi
+BccBanksInternal.formatCurrency = formatCurrency
+BccBanksInternal.safeFormat = safeFormat
+BccBanksInternal.formatTimestamp = formatTimestamp
+
 local function getReminderConfig()
     local timing = Config.LoanTiming or {}
     local reminders = timing.DailyReminders or {}
@@ -115,6 +135,11 @@ BccUtils.RPC:Register('Feather:Banks:GetLoans', function(params, cb, src)
         cb(false)
         return
     end
+    list = list or {}
+    for _, loan in ipairs(list) do
+        loan.created_at_display = (BccBanksInternal and BccBanksInternal.formatTimestamp and BccBanksInternal.formatTimestamp(loan.created_at)) or formatTimestamp(loan.created_at)
+        loan.amount_formatted = formatCurrency(loan.amount)
+    end
     cb(true, list)
 end)
 
@@ -132,6 +157,30 @@ BccUtils.RPC:Register('Feather:Banks:GetLoan', function(params, cb, src)
         return
     end
     cb(true, info)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:GetLoanTransactions', function(params, cb, src)
+    local loan_id = NormalizeId(params and params.loan)
+    if not loan_id then
+        NotifyClient(src, _U('error_invalid_loan_id'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local loan = GetLoan(loan_id)
+    if not loan then
+        NotifyClient(src, _U('error_loan_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local transactions = GetLoanTransactions(loan_id)
+    for _, tx in ipairs(transactions or {}) do
+        tx.amount_formatted = formatCurrency(tx.amount)
+        tx.created_at_display = BccBanksInternal and BccBanksInternal.formatTimestamp and BccBanksInternal.formatTimestamp(tx.created_at) or formatTimestamp(tx.created_at)
+    end
+
+    cb(true, transactions or {})
 end)
 
 BccUtils.RPC:Register('Feather:Banks:ClaimLoanDisbursement', function(params, cb, src)
@@ -388,7 +437,8 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
     char.removeCurrency(0, amount)
 
     -- Record the repayment against the loan
-    AddLoanTransaction(loan_id, characterId, amount, 'loan - repayment', 'Loan repayment from character cash')
+    local repayDesc = _U and _U('loan_repayment_cash_desc') or 'Loan repayment from character cash'
+    AddLoanTransaction(loan_id, characterId, amount, 'loan - repayment', repayDesc)
 
     -- If fully repaid now, mark loan as paid
     local after = ComputeLoanOutstanding(loan_id)

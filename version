@@ -1,3 +1,14 @@
-<1.2.0>
-Please make a backup of database before updating this script to this version!
-See GitHub for details!
+**v1.3.0 — Changelog**
+- Added: mailbox notification on loan approve/reject via `bcc-maibox`
+- Added: configurable `loanbStatusMail`
+- Added: admins/bankers can access SDBs
+- Changed: redesigned transactions page (admins & users)
+- Changed: use concatenation instead of `string.format`
+- Changed: moved `getMaiboxApi` to `server/services/admin/`
+- Changed: `IsBankAdmin` is now global
+- Changed: updated `locale.lua`
+- Fixed: back buttons
+- Fixed: hide Pay button when loan is paid
+- Fixed: various localizations
+- Removed: some UUIDs from labels
+- Removed: migration(s) in this version

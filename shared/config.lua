@@ -129,6 +129,17 @@ Config = {
 		}
 	},
 
+	LoanStatusMail = {
+		Enabled = true,
+		SendOnApprove = true,
+		SendOnReject = true,
+		MailFrom = nil, -- defaults to the bank name; set to override sender
+		ApproveSubject = nil, -- defaults to localized mail_loan_approved_subject
+		ApproveBody = nil, -- defaults to localized mail_loan_approved_body
+		RejectSubject = nil, -- defaults to localized mail_loan_rejected_subject
+		RejectBody = nil -- defaults to localized mail_loan_rejected_body
+	},
+
 	-- Safety Deposit Box Options
 	SafetyDepositBoxes = {
 
