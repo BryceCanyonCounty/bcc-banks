@@ -391,11 +391,12 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
         return
     end
     local status = tostring(loanRow.status)
+    local isDefaulted = status == 'defaulted' or tonumber(loanRow.is_defaulted) == 1
     if status == 'paid' then
         NotifyClient(src, _U('error_loan_already_paid') or 'Loan already fully repaid.', 'success', 4000)
         cb(false)
         return
-    elseif status ~= 'approved' then
+    elseif status ~= 'approved' and not isDefaulted then
         NotifyClient(src, _U('error_loan_not_approved') or 'Loan has not been approved yet.', 'error', 4000)
         cb(false)
         return
@@ -443,7 +444,10 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
     -- If fully repaid now, mark loan as paid
     local after = ComputeLoanOutstanding(loan_id)
     if after and (after.outstanding or 0) <= 0 then
-        MySQL.query.await('UPDATE `bcc_loans` SET `status` = "paid" WHERE `id` = ?', { loan_id })
+        MySQL.query.await('UPDATE `bcc_loans` SET `status` = "paid", `is_defaulted` = 0 WHERE `id` = ?', { loan_id })
+        if loanRow and loanRow.character_id then
+            SetOwnerAccountsFrozen(tonumber(loanRow.character_id), false)
+        end
     end
 
     NotifyClient(src, _U('success_loan_repaid'), 'success', 4000)

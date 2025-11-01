@@ -12,10 +12,11 @@ end
 
 function GetAccountCount(owner, bank)
     local result = MySQL.query.await(
-        'SELECT COUNT(*) FROM `bcc_accounts` WHERE `owner_id` = ? AND `bank_id` = ?',
+        'SELECT COUNT(*) AS cnt FROM `bcc_accounts` WHERE `owner_id` = ? AND `bank_id` = ?',
         { owner, bank }
     )
-    return result and result[1] and result[1]["COUNT(*)"] or 0
+    local row = result and result[1]
+    return tonumber(row and (row.cnt or row["COUNT(*)"])) or 0
 end
 
 function CreateAccount(name, owner, bank)
