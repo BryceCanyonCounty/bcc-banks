@@ -1,4 +1,8 @@
-**v1.3.0 — Changelog**
+<1.3.1>
+- Let defaulted loans be repaid and automatically thaw the borrower’s accounts once the balance reaches zero.
+- Reset is_defaulted alongside the status so cleared loans look like normal paid loans in the DB.
+- Fix GetAccountCount to coerce the SQL result into a number, resolving the “Unable to create account” error on fresh installs.
+<1.3.0>
 - Added: mailbox notification on loan approve/reject via `bcc-maibox`
 - Added: configurable `loanbStatusMail`
 - Added: admins/bankers can access SDBs

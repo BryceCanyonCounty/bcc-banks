@@ -106,7 +106,11 @@ function RepayLoan(loan_id, account_id, character_id, amount)
     -- Mark loan paid if fully repaid
     local after = ComputeLoanOutstanding(loan_id)
     if after and (after.outstanding or 0) <= 0 then
-        MySQL.query.await('UPDATE `bcc_loans` SET `status` = "paid" WHERE `id` = ?', { loan_id })
+        MySQL.query.await('UPDATE `bcc_loans` SET `status` = "paid", `is_defaulted` = 0 WHERE `id` = ?', { loan_id })
+        local ownerChar = (after.loan and after.loan.character_id) or (info and info.loan and info.loan.character_id) or character_id
+        if ownerChar then
+            SetOwnerAccountsFrozen(tonumber(ownerChar), false)
+        end
     end
 
     return { status = true }
