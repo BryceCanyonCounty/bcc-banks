@@ -359,24 +359,24 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListAccounts', function(params, cb, s
         return
     end
     local rows = MySQL.query.await('SELECT id, name, owner_id, cash, gold FROM `bcc_accounts` WHERE bank_id = ? ORDER BY id DESC', { bankId })
-    -- Enrich with owner names using VORP for online users; fallback to DB when offline
     for _, row in ipairs(rows or {}) do
         local fn, ln = nil, nil
-        if row.owner_id then
+        local numericId = tonumber(row.owner_id)
+        if numericId then
             for _, playerId in ipairs(GetPlayers()) do
-                local psrc = tonumber(playerId)
-                local user = VORPcore.getUser(psrc)
+                local user = VORPcore.getUser(tonumber(playerId))
                 if user then
                     local ch = user.getUsedCharacter
-                    if ch and tonumber(ch.charIdentifier) == tonumber(row.owner_id) then
+                    if ch and tonumber(ch.charIdentifier) == numericId then
                         fn = ch.firstname or ch.firstName
                         ln = ch.lastname or ch.lastName
                         break
                     end
                 end
             end
+
             if not fn and not ln then
-                local nameRow = MySQL.query.await('SELECT firstname, lastname FROM characters WHERE charidentifier = ? LIMIT 1', { row.owner_id })
+                local nameRow = MySQL.query.await('SELECT firstname, lastname FROM characters WHERE charidentifier = ? LIMIT 1', { numericId })
                 nameRow = nameRow and nameRow[1] or nil
                 if nameRow then
                     fn = nameRow.firstname
@@ -385,7 +385,55 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ListAccounts', function(params, cb, s
             end
         end
         row.owner_firstname = fn
-        row.owner_lastname  = ln
+        row.owner_lastname = ln
+    end
+    cb(true, rows or {})
+end)
+
+BccUtils.RPC:Register('Feather:Banks:Admin:ListFrozenAccounts', function(params, cb, src)
+    if not IsBankAdmin(src) then
+        devPrint('[ADMIN] ListFrozenAccounts denied: no permission for src', src)
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local bankId = NormalizeId(params and params.bank)
+    if not bankId then
+        devPrint('[ADMIN] ListFrozenAccounts invalid bank id:', params and params.bank)
+        NotifyClient(src, _U('admin_invalid_bank_id') or 'Invalid bank id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local rows = MySQL.query.await('SELECT id, name, owner_id, account_number, cash, gold FROM `bcc_accounts` WHERE bank_id = ? AND is_frozen = 1 ORDER BY id DESC', { bankId })
+    for _, row in ipairs(rows or {}) do
+        local fn, ln = nil, nil
+        local numericId = tonumber(row.owner_id)
+        if numericId then
+            for _, playerId in ipairs(GetPlayers()) do
+                local user = VORPcore.getUser(tonumber(playerId))
+                if user then
+                    local ch = user.getUsedCharacter
+                    if ch and tonumber(ch.charIdentifier) == numericId then
+                        fn = ch.firstname or ch.firstName
+                        ln = ch.lastname or ch.lastName
+                        break
+                    end
+                end
+            end
+
+            if not fn and not ln then
+                local nameRow = MySQL.query.await('SELECT firstname, lastname FROM characters WHERE charidentifier = ? LIMIT 1', { numericId })
+                nameRow = nameRow and nameRow[1] or nil
+                if nameRow then
+                    fn = nameRow.firstname
+                    ln = nameRow.lastname
+                end
+            end
+        end
+        row.owner_firstname = fn
+        row.owner_lastname = ln
     end
     cb(true, rows or {})
 end)
@@ -414,24 +462,24 @@ BccUtils.RPC:Register('Feather:Banks:Admin:GetAccount', function(params, cb, src
         return
     end
 
-    -- Attach owner name using VORP for online user; fallback to DB when offline
     do
         local fn, ln = nil, nil
-        if row.owner_id then
+        local numericId = tonumber(row.owner_id)
+        if numericId then
             for _, playerId in ipairs(GetPlayers()) do
-                local psrc = tonumber(playerId)
-                local user = VORPcore.getUser(psrc)
+                local user = VORPcore.getUser(tonumber(playerId))
                 if user then
                     local ch = user.getUsedCharacter
-                    if ch and tonumber(ch.charIdentifier) == tonumber(row.owner_id) then
+                    if ch and tonumber(ch.charIdentifier) == numericId then
                         fn = ch.firstname or ch.firstName
                         ln = ch.lastname or ch.lastName
                         break
                     end
                 end
             end
+
             if not fn and not ln then
-                local nameRow = MySQL.query.await('SELECT firstname, lastname FROM characters WHERE charidentifier = ? LIMIT 1', { row.owner_id })
+                local nameRow = MySQL.query.await('SELECT firstname, lastname FROM characters WHERE charidentifier = ? LIMIT 1', { numericId })
                 nameRow = nameRow and nameRow[1] or nil
                 if nameRow then
                     fn = nameRow.firstname
@@ -440,11 +488,113 @@ BccUtils.RPC:Register('Feather:Banks:Admin:GetAccount', function(params, cb, src
             end
         end
         row.owner_firstname = fn
-        row.owner_lastname  = ln
+        row.owner_lastname = ln
     end
 
     local tx = GetAccountTransactions(accId)
     cb(true, { account = row, transactions = tx or {} })
+end)
+
+BccUtils.RPC:Register('Feather:Banks:Admin:UnfreezeAccount', function(params, cb, src)
+    if not IsBankAdmin(src) then
+        devPrint('[ADMIN] UnfreezeAccount denied: no permission for src', src)
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local accId = NormalizeId(params and params.account)
+    if not accId then
+        devPrint('[ADMIN] UnfreezeAccount invalid account id:', params and params.account)
+        NotifyClient(src, _U('error_invalid_account_id') or 'Invalid account id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local row = MySQL.query.await('SELECT owner_id, is_frozen FROM `bcc_accounts` WHERE id = ? LIMIT 1', { accId })
+    row = row and row[1] or nil
+    if not row then
+        NotifyClient(src, _U('error_invalid_account_id') or 'Invalid account id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    if row.is_frozen == 0 or row.is_frozen == false then
+        cb(true)
+        return
+    end
+
+    local ownerId = tonumber(row.owner_id)
+    if ownerId then
+        SetOwnerAccountsFrozen(ownerId, false)
+    else
+        MySQL.query.await('UPDATE `bcc_accounts` SET `is_frozen` = 0 WHERE `id` = ?', { accId })
+    end
+
+    cb(true)
+end)
+
+BccUtils.RPC:Register('Feather:Banks:Admin:SetAccountFrozen', function(params, cb, src)
+    if not IsBankAdmin(src) then
+        devPrint('[ADMIN] SetAccountFrozen denied: no permission for src', src)
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local accId = NormalizeId(params and params.account)
+    local shouldFreeze = params and params.frozen
+    if not accId or type(shouldFreeze) ~= 'boolean' then
+        devPrint('[ADMIN] SetAccountFrozen invalid params:', params)
+        NotifyClient(src, _U('admin_invalid_account_freeze') or 'Invalid account/state.', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local row = MySQL.query.await('SELECT id FROM `bcc_accounts` WHERE id = ? LIMIT 1', { accId })
+    if not row or not row[1] then
+        NotifyClient(src, _U('error_invalid_account_id') or 'Invalid account id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    MySQL.query.await('UPDATE `bcc_accounts` SET `is_frozen` = ? WHERE `id` = ?', { shouldFreeze and 1 or 0, accId })
+    cb(true, { is_frozen = shouldFreeze })
+end)
+
+BccUtils.RPC:Register('Feather:Banks:Admin:DeleteAccount', function(params, cb, src)
+    devPrint('[ADMIN] DeleteAccount called by src=', src, 'params=', params)
+
+    if not IsBankAdmin(src) then
+        devPrint('[ADMIN] DeleteAccount denied: no permission for src', src)
+        NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local accId = NormalizeId(params and params.account)
+    if not accId then
+        devPrint('[ADMIN] DeleteAccount invalid account id:', params and params.account)
+        NotifyClient(src, _U('error_invalid_account_id') or 'Invalid account id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    local row = GetAccount(accId)
+    if not row then
+        devPrint('[ADMIN] DeleteAccount failed: account not found for id', accId)
+        NotifyClient(src, _U('error_invalid_account_id') or 'Invalid account id', 'error', 3500)
+        cb(false)
+        return
+    end
+
+    devPrint('[ADMIN] DeleteAccount removing account', accId, 'owner=', row.owner_id, 'cash=', row.cash, 'gold=', row.gold)
+    MySQL.query.await('DELETE FROM `bcc_accounts_access` WHERE `account_id` = ?', { accId })
+    MySQL.query.await('DELETE FROM `bcc_transactions` WHERE `account_id` = ?', { accId })
+    MySQL.query.await('DELETE FROM `bcc_accounts` WHERE `id` = ?', { accId })
+
+    devPrint('[ADMIN] DeleteAccount success for', accId)
+    cb(true)
 end)
 
 BccUtils.RPC:Register('Feather:Banks:Admin:ListLoans', function(params, cb, src)

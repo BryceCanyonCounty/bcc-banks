@@ -164,6 +164,12 @@ function OpenAdminBankHub(bank, Parent)
         OpenAdminAccountsMenu(Hub, bank)
     end)
     Hub:RegisterElement("button", {
+        label = _U("admin_view_locked_accounts_button"),
+        style = {}
+    }, function()
+        OpenAdminLockedAccountsMenu(Hub, bank)
+    end)
+    Hub:RegisterElement("button", {
         label = _U("admin_view_loans_button"),
         style = {}
     }, function()
@@ -806,6 +812,129 @@ function OpenAdminAccountsMenu(Parent, bank)
     FeatherBankMenu:Open({ startupPage = AdminAccountsPage })
 end
 
+function OpenAdminLockedAccountsMenu(Parent, bank)
+    local pageId = 'bank:page:admin:locked:' .. (bank and tostring(bank.id) or 'all')
+    local LockedAccountsPage = FeatherBankMenu:RegisterPage(pageId)
+
+    LockedAccountsPage:RegisterElement('header', {
+        value = _U('admin_locked_accounts_header'),
+        slot  = 'header'
+    })
+    LockedAccountsPage:RegisterElement('subheader', {
+        value = _U('admin_locked_accounts_subheader'),
+        slot  = 'header'
+    })
+    LockedAccountsPage:RegisterElement('line', {
+        slot  = 'header',
+        style = {}
+    })
+
+    local bankIdValue = bank and tostring(bank.id) or ''
+
+    local function renderLockedList(bankId)
+        if not bankId then return end
+
+        local ok, rows = BccUtils.RPC:CallAsync('Feather:Banks:Admin:ListFrozenAccounts', { bank = bankId })
+        if not ok then
+            Notify(_U('admin_action_failed'), 3000)
+            return
+        end
+
+        LockedAccountsPage:RegisterElement('line', {
+            slot  = 'content',
+            style = {}
+        })
+
+        if not rows or #rows == 0 then
+            LockedAccountsPage:RegisterElement('textdisplay', {
+                value = _U('admin_locked_accounts_empty'),
+                slot  = 'content'
+            })
+            return
+        end
+
+        for _, row in ipairs(rows or {}) do
+            local accData = row
+            local first    = (accData.owner_firstname and tostring(accData.owner_firstname)) or ''
+            local last     = (accData.owner_lastname and tostring(accData.owner_lastname)) or ''
+            local fullName = (first ~= '' or last ~= '') and (first .. ' ' .. last) or (_U('unknown') or 'Unknown')
+            local accName  = (accData.name and tostring(accData.name)) or (_U('bank_accounts_header') or 'Account')
+            local charId   = accData.owner_id and tostring(accData.owner_id) or '—'
+            local accNum   = accData.account_number and tostring(accData.account_number) or '—'
+            local charLabel = ((_U('character_id_label') or 'Character ID'):gsub(':', ''))
+            local accNumLabel = ((_U('account_number_label') or 'Account number'):gsub(':', ''))
+            local header = string.format('%s — %s (#%s)', fullName, accName, tostring(accData.id or ''))
+            local details = string.format('%s: %s | %s: %s', charLabel, charId, accNumLabel, accNum)
+
+            LockedAccountsPage:RegisterElement('textdisplay', {
+                value = header .. '\n' .. details,
+                slot  = 'content'
+            })
+            LockedAccountsPage:RegisterElement('button', {
+                label = _U('admin_unlock_account_button'),
+                style = {}
+            }, function()
+                local okUnlock = BccUtils.RPC:CallAsync('Feather:Banks:Admin:SetAccountFrozen', {
+                    account = tostring(accData.id),
+                    frozen = false
+                })
+                Notify(okUnlock and (_U('admin_unlock_account_success') or 'Account unlocked.') or
+                    (_U('admin_unlock_account_failed') or 'Failed to unlock account.'),
+                    okUnlock and 'success' or 'error', 3500)
+                if okUnlock then
+                    OpenAdminLockedAccountsMenu(Parent, bank)
+                end
+            end)
+            LockedAccountsPage:RegisterElement('line', {
+                slot  = 'content',
+                style = { margin = '6px 0' }
+            })
+        end
+    end
+
+    if not bank then
+        LockedAccountsPage:RegisterElement('input', {
+            label       = _U('admin_bank_id_label'),
+            placeholder = _U('admin_bank_id_placeholder'),
+            style       = {}
+        }, function(data)
+            bankIdValue = data.value
+            local bankId = NormalizeId(bankIdValue)
+            if bankId then
+                renderLockedList(bankId)
+            end
+        end)
+    else
+        LockedAccountsPage:RegisterElement('textdisplay', {
+            value = 'Bank: ' .. tostring(bank.name),
+            slot  = 'content'
+        })
+    end
+
+    local startBankId = bank and NormalizeId(bank.id) or NormalizeId(bankIdValue)
+    if startBankId then
+        renderLockedList(startBankId)
+    end
+
+    LockedAccountsPage:RegisterElement('line', {
+        slot  = 'footer',
+        style = {}
+    })
+    LockedAccountsPage:RegisterElement('button', {
+        label = _U('back_button'),
+        slot  = 'footer',
+        style = {}
+    }, function()
+        Parent:RouteTo()
+    end)
+    LockedAccountsPage:RegisterElement('bottomline', {
+        slot  = 'footer',
+        style = {}
+    })
+
+    FeatherBankMenu:Open({ startupPage = LockedAccountsPage })
+end
+
 -- Admin view: account details (read-only)
 function OpenAdminAccountDetails(accountId, ParentPage)
     local ok, resp = BccUtils.RPC:CallAsync('Feather:Banks:Admin:GetAccount', { account = tostring(accountId) })
@@ -856,6 +985,61 @@ function OpenAdminAccountDetails(accountId, ParentPage)
         value = { html },
         slot = 'content'
     })
+
+    local isFrozen = acc.is_frozen == 1 or acc.is_frozen == true
+    Page:RegisterElement('textdisplay', {
+        value = isFrozen and (_U('admin_account_locked_status') or 'Status: Locked') or
+            (_U('admin_account_unlocked_status') or 'Status: Unlocked'),
+        slot = 'content'
+    })
+    Page:RegisterElement('button', {
+        label = isFrozen and (_U('admin_unlock_account_button') or 'Unlock Account') or
+            (_U('admin_lock_account_button') or 'Lock Account'),
+        style = {}
+    }, function()
+        local targetState = not isFrozen
+        local okSet = BccUtils.RPC:CallAsync('Feather:Banks:Admin:SetAccountFrozen', {
+            account = tostring(acc.id),
+            frozen = targetState
+        })
+        local successMsg = targetState and (_U('admin_lock_account_success') or 'Account locked.') or
+            (_U('admin_unlock_account_success') or 'Account unlocked.')
+        local failMsg = targetState and (_U('admin_lock_account_failed') or 'Failed to lock account.') or
+            (_U('admin_unlock_account_failed') or 'Failed to unlock account.')
+        Notify(okSet and successMsg or failMsg, okSet and 'success' or 'error', 3500)
+        if okSet then
+            OpenAdminAccountDetails(acc.id, ParentPage)
+        end
+    end)
+
+    Page:RegisterElement('button', {
+        label = _U('admin_delete_account_button') or 'Delete Account',
+        style = {}
+    }, function()
+        local okDel = BccUtils.RPC:CallAsync('Feather:Banks:Admin:DeleteAccount', { account = tostring(acc.id) })
+        Notify(okDel and (_U('admin_delete_account_success') or 'Account deleted.') or
+            (_U('admin_delete_account_failed') or 'Failed to delete account.'),
+            okDel and 'success' or 'error', 3500)
+        if okDel and ParentPage then
+            ParentPage:RouteTo()
+        end
+    end)
+
+    Page:RegisterElement('button', {
+        label = _U('admin_force_delete_account_button') or 'Force Delete Account',
+        style = {}
+    }, function()
+        local okDel = BccUtils.RPC:CallAsync('Feather:Banks:Admin:DeleteAccount', {
+            account = tostring(acc.id),
+            force = true
+        })
+        Notify(okDel and (_U('admin_force_delete_account_success') or 'Account deleted (forced).') or
+            (_U('admin_force_delete_account_failed') or 'Failed to force delete account.'),
+            okDel and 'success' or 'error', 3500)
+        if okDel and ParentPage then
+            ParentPage:RouteTo()
+        end
+    end)
 
     Page:RegisterElement('line', {
         slot = 'footer',
