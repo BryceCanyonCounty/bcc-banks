@@ -1,3 +1,8 @@
+<1.4.1>
+- Added the ability to view locked accounts.
+- Added options to lock and unlock accounts.
+- Added the ability to delete accounts directly from the interface.
+
 <1.3.1>
 - Let defaulted loans be repaid and automatically thaw the borrower’s accounts once the balance reaches zero.
 - Reset is_defaulted alongside the status so cleared loans look like normal paid loans in the DB.
