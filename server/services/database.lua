@@ -12,9 +12,22 @@ CreateThread(function()
             `hours_active` BOOLEAN NOT NULL DEFAULT FALSE,
             `open_hour` INT UNSIGNED NULL,
             `close_hour` INT UNSIGNED NULL,
+            `interest_rate` DOUBLE(5,2) NOT NULL DEFAULT 10.0,
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
+
+    -- Ensure interest_rate column exists for existing installations
+    local irCol = MySQL.query.await([[
+        SELECT COUNT(*) AS cnt
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'bcc_banks'
+          AND COLUMN_NAME = 'interest_rate'
+    ]])
+    if irCol and irCol[1] and tonumber(irCol[1].cnt or 0) == 0 then
+        MySQL.query.await([[ALTER TABLE `bcc_banks` ADD COLUMN `interest_rate` DOUBLE(5,2) NOT NULL DEFAULT 10.0]])
+    end
 
     -- Ensure column exists for existing installations (add if missing)
     local col = MySQL.query.await([[
@@ -99,24 +112,6 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
 
-    -- bcc_loans_payments
-    MySQL.query.await([[
-        CREATE TABLE IF NOT EXISTS `bcc_loans_payments` (
-            `id` VARCHAR(36) NOT NULL,
-            `loan_id` VARCHAR(36) NOT NULL,
-            `amount` DOUBLE(15,2) NOT NULL,
-            `date_due` DATETIME NOT NULL,
-            `is_paid` BOOLEAN NOT NULL DEFAULT FALSE,
-            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            KEY `idx_lp_loan` (`loan_id`),
-            CONSTRAINT `FK_lp_loan`
-              FOREIGN KEY (`loan_id`) REFERENCES `bcc_loans` (`id`)
-              ON DELETE CASCADE ON UPDATE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-    ]])
-
     -- bcc_loan_interest_rates (no FKs)
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_loan_interest_rates` (
@@ -126,16 +121,6 @@ CreateThread(function()
             PRIMARY KEY (`character_id`, `bank_id`),
             KEY `idx_lir_bank` (`bank_id`),
             KEY `idx_lir_character` (`character_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-    ]])
-
-    -- bcc_bank_interest_rates (per-bank base rate used by admin UI)
-    MySQL.query.await([[
-        CREATE TABLE IF NOT EXISTS `bcc_bank_interest_rates` (
-            `bank_id` VARCHAR(36) NOT NULL,
-            `interest` DOUBLE(15,2) NOT NULL,
-            PRIMARY KEY (`bank_id`),
-            KEY `idx_bir_bank` (`bank_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
 
@@ -167,7 +152,7 @@ CreateThread(function()
             `bank_id` VARCHAR(36) NOT NULL,
             `owner_id` BIGINT UNSIGNED NOT NULL,
             `size` VARCHAR(255) NOT NULL,
-            `inventory_id` CHAR(40) NULL,
+            `inventory_id` CHAR(36) NULL,
             PRIMARY KEY (`id`),
             KEY `idx_sdb_bank` (`bank_id`),
             KEY `idx_sdb_owner` (`owner_id`),
@@ -189,28 +174,6 @@ CreateThread(function()
             CONSTRAINT `FK_sdba_sdb`
               FOREIGN KEY (`safety_deposit_box_id`)
               REFERENCES `bcc_safety_deposit_boxes` (`id`)
-              ON DELETE CASCADE ON UPDATE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-    ]])
-
-    -- bcc_checks
-    MySQL.query.await([[
-        CREATE TABLE IF NOT EXISTS `bcc_checks` (
-            `id` VARCHAR(36) NOT NULL,
-            `account_id` VARCHAR(36) NOT NULL,
-            `issuer_character_id` BIGINT UNSIGNED NOT NULL,
-            `recipient_character_id` BIGINT UNSIGNED NOT NULL,
-            `amount` DOUBLE(15,2) NOT NULL,
-            `memo` VARCHAR(255) NOT NULL DEFAULT '',
-            `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
-            `cashed_at` DATETIME NULL,
-            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            KEY `idx_checks_account` (`account_id`),
-            KEY `idx_checks_recipient` (`recipient_character_id`),
-            KEY `idx_checks_issuer` (`issuer_character_id`),
-            CONSTRAINT `FK_checks_account`
-              FOREIGN KEY (`account_id`) REFERENCES `bcc_accounts` (`id`)
               ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
