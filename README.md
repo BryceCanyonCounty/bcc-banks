@@ -52,6 +52,23 @@ Requires the lockpick system dependency: https://github.com/guf1ck/lockpick-syst
 
 3) Start the server. All required tables are created automatically (see "Database" below). Use `/bankadmin` to create your first bank at your position, or insert banks via SQL.
 
+## Upgrading from a previous version
+
+If you are upgrading an existing installation, run the following SQL statements in order before starting the server. These migrate the bank interest rate from its own table into `bcc_banks` and remove two unused tables.
+
+```sql
+ALTER TABLE `bcc_banks` ADD COLUMN `interest_rate` DOUBLE(5,2) NOT NULL DEFAULT 10.0;
+
+UPDATE `bcc_banks` b
+JOIN `bcc_bank_interest_rates` r ON r.bank_id = b.id
+SET b.interest_rate = r.interest;
+
+DROP TABLE IF EXISTS `bcc_bank_interest_rates`;
+DROP TABLE IF EXISTS `bcc_loans_payments`;
+```
+
+Fresh installs do not need to run these — the updated `database.lua` handles everything automatically.
+
 ## Configuration
 
 Main settings live in `BCC/bcc-banks/shared/config.lua`:
@@ -96,7 +113,7 @@ Tables are created automatically on server start in `server/services/database.lu
 
 - `bcc_banks`, `bcc_accounts`, `bcc_accounts_access`
 - `bcc_transactions`
-- `bcc_loans`, `bcc_loans_payments`, `bcc_loan_interest_rates`, `bcc_bank_interest_rates`
+- `bcc_loans`, `bcc_loan_interest_rates`
 - `bcc_safety_deposit_boxes`, `bcc_safety_deposit_boxes_access`
 - `bcc_checks`
 
