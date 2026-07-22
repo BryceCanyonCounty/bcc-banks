@@ -1,34 +1,9 @@
-<1.5.0>
-- Added: check/cheque system — write checks from any account to a named recipient (first + last name lookup); funds deduct immediately
-- Added: check physical item mode — issuer receives a `bank_check` inventory item; recipient double-clicks at a bank to cash it
-- Added: check void — issuers can void pending checks, refunding the account
-- Added: configurable mail system — supports `bcc-mailbox`, `syn_mail` (direct DB insert), or any custom script via server event
-- Added: Spanish, Italian, French, and German localization
-- Changed: grant/revoke account and SDB access by character first + last name instead of character ID
-- Changed: banker busy lock now respects `Config.UseBankerBusy` and is automatically released on menu close
-- Changed: stale account locks from disconnected players are auto-cleared on next access attempt
-- Fixed: `Config.UseBankerBusy = false` now correctly disables the busy check
-
-<1.4.1>
-- Added the ability to view locked accounts.
-- Added options to lock and unlock accounts.
-- Added the ability to delete accounts directly from the interface.
-
-<1.3.1>
-- Let defaulted loans be repaid and automatically thaw the borrower's accounts once the balance reaches zero.
-- Reset is_defaulted alongside the status so cleared loans look like normal paid loans in the DB.
-- Fix GetAccountCount to coerce the SQL result into a number, resolving the "Unable to create account" error on fresh installs.
-<1.3.0>
-- Added: mailbox notification on loan approve/reject via `bcc-maibox`
-- Added: configurable `loanbStatusMail`
-- Added: admins/bankers can access SDBs
-- Changed: redesigned transactions page (admins & users)
-- Changed: use concatenation instead of `string.format`
-- Changed: moved `getMaiboxApi` to `server/services/admin/`
-- Changed: `IsBankAdmin` is now global
-- Changed: updated `locale.lua`
-- Fixed: back buttons
-- Fixed: hide Pay button when loan is paid
-- Fixed: various localizations
-- Removed: some UUIDs from labels
-- Removed: migration(s) in this version
+<1.5.1>
+- Fixed: duplicate bank teller NPCs after proximity streaming or bank data refreshes
+- Fixed: bank teller NPCs reacting to gunfire and running in place
+- Fixed: bank doors could be lockpicked through walls; lockpick prompts now require line of sight
+- Added: localized admin, safety deposit box, bank prompt, and lockpick UI text for all supported languages
+- Security: made balance transfers, check redemption, and loan disbursement concurrency-safe
+- Security: added server-side access checks for transaction, loan, account-access, and SDB-access data
+- Security: enforced bank proximity, opening hours, feature toggles, numeric bounds, and valid access levels server-side
+- Security: escaped transaction HTML and routed lockpick success through server authorization and synchronization
