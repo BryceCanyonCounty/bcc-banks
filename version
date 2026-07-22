@@ -1,9 +1,5 @@
-<1.5.1>
-- Fixed: duplicate bank teller NPCs after proximity streaming or bank data refreshes
-- Fixed: bank teller NPCs reacting to gunfire and running in place
-- Fixed: bank doors could be lockpicked through walls; lockpick prompts now require line of sight
-- Added: localized admin, safety deposit box, bank prompt, and lockpick UI text for all supported languages
-- Security: made balance transfers, check redemption, and loan disbursement concurrency-safe
-- Security: added server-side access checks for transaction, loan, account-access, and SDB-access data
-- Security: enforced bank proximity, opening hours, feature toggles, numeric bounds, and valid access levels server-side
-- Security: escaped transaction HTML and routed lockpick success through server authorization and synchronization
+<1.5.2>
+- Fixed: loan applications now upgrade older loan schemas with every required column
+- Fixed: bank and character interest-rate lookup safely falls back to the default rate
+- Fixed: accountless loan applications now create the dedicated loan account promised by the UI
+- Fixed: invalid loan durations and out-of-range interest rates are rejected
