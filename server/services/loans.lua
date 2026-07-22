@@ -312,10 +312,29 @@ BccUtils.RPC:Register('Feather:Banks:CreateLoan', function(params, cb, src)
         return
     end
 
+    -- Applications started from the bank-level loan menu do not provide an
+    -- account. Create the dedicated account promised by the UI before saving
+    -- the loan, then roll it back if the loan insert fails.
+    local autoCreatedAccountId
+    if not account_id then
+        local accountResult = CreateAccountReturn(_U('loan_account_default_name') or 'Loan Account', characterId, bankId)
+        if not accountResult or accountResult.status == false or not accountResult.account then
+            NotifyClient(src, (accountResult and accountResult.message) or _U('error_unable_create_loan'), 'error', 4000)
+            cb(false)
+            return
+        end
+        account_id = NormalizeId(accountResult.account.id)
+        autoCreatedAccountId = account_id
+    end
+
     -- Compute interest server-side for this character (and bank)
     local interest = GetCharacterLoanInterest(characterId, bankId)
     local res = CreateLoan(account_id, characterId, amount, interest, duration, bankId)
     if not res or res.status == false then
+        if autoCreatedAccountId then
+            MySQL.query.await('DELETE FROM `bcc_accounts_access` WHERE `account_id` = ?', { autoCreatedAccountId })
+            MySQL.query.await('DELETE FROM `bcc_accounts` WHERE `id` = ? AND `cash` = 0 AND `gold` = 0', { autoCreatedAccountId })
+        end
         NotifyClient(src, res and res.message or _U('error_unable_create_loan'), 'error', 4000)
         cb(false)
         return
