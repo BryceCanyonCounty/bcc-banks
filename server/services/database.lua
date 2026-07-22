@@ -1,4 +1,18 @@
 CreateThread(function()
+    local function ensureColumn(tableName, columnName, definition)
+        local rows = MySQL.query.await([[
+            SELECT COUNT(*) AS cnt
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?
+              AND COLUMN_NAME = ?
+        ]], { tableName, columnName })
+        local exists = rows and rows[1] and tonumber(rows[1].cnt or 0) > 0
+        if not exists then
+            MySQL.query.await(('ALTER TABLE `%s` ADD COLUMN `%s` %s'):format(tableName, columnName, definition))
+        end
+    end
+
     -- bcc_banks
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_banks` (
@@ -98,6 +112,22 @@ CreateThread(function()
               ON DELETE SET NULL ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
+
+    -- CREATE TABLE IF NOT EXISTS does not upgrade existing installations.
+    -- Keep every field used by the application, approval, claim, repayment and
+    -- default flows available when updating from an older release.
+    ensureColumn('bcc_loans', 'bank_id', 'VARCHAR(36) NULL')
+    ensureColumn('bcc_loans', 'interest', 'DOUBLE(15,2) NOT NULL DEFAULT 10.0')
+    ensureColumn('bcc_loans', 'approved_by', 'BIGINT UNSIGNED NULL')
+    ensureColumn('bcc_loans', 'approved_at', 'DATETIME NULL')
+    ensureColumn('bcc_loans', 'disbursed_account_id', 'VARCHAR(36) NULL')
+    ensureColumn('bcc_loans', 'disbursed_at', 'DATETIME NULL')
+    ensureColumn('bcc_loans', 'last_game_day', 'INT NULL')
+    ensureColumn('bcc_loans', 'game_days_elapsed', 'INT UNSIGNED NOT NULL DEFAULT 0')
+    ensureColumn('bcc_loans', 'due_game_days', 'INT UNSIGNED NULL')
+    ensureColumn('bcc_loans', 'is_defaulted', 'BOOLEAN NOT NULL DEFAULT FALSE')
+    ensureColumn('bcc_loans', 'created_at', 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP')
+    ensureColumn('bcc_loans', 'updated_at', 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
 
     -- bcc_loans_payments
     MySQL.query.await([[
