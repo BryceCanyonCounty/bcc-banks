@@ -423,7 +423,7 @@ function OpenLoanApplyForm(account, bank, ParentPage)
             Notify(_U('invalid_loan_amount'), 4000)
             return
         end
-        if not duration or duration < 0 then
+        if not duration or duration < 1 or duration % 1 ~= 0 or duration > 120 then
             Notify(_U('invalid_duration'), 4000)
             return
         end
@@ -544,7 +544,7 @@ function OpenLoanApplyForm_NoAccount(bank, ParentPage)
             Notify(_U('invalid_loan_amount'), 4000)
             return
         end
-        if not duration or duration < 0 then
+        if not duration or duration < 1 or duration % 1 ~= 0 or duration > 120 then
             Notify(_U('invalid_duration'), 4000)
             return
         end
