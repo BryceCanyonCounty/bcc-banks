@@ -110,8 +110,8 @@ function OpenUI(bank)
     end
 
     if Config.UseBankerBusy then
-        local ok, acquired = BccUtils.RPC:CallAsync('Feather:Banks:SetBankerBusy', { bank = bankId, state = true })
-        if not ok or not acquired then
+        local acquired = BccUtils.RPC:CallAsync('Feather:Banks:SetBankerBusy', { bank = bankId, state = true })
+        if not acquired then
             Notify(_U("banker_busy_notify"), 4000)
             return
         end
@@ -181,13 +181,14 @@ end
 
 function OpenTransactionsPage(acc, ParentPage)
     devPrint("Opening transactions page for account ID:", acc.id)
+    local accountNumber = acc.account_number or acc.id
     local TransactionPage = FeatherBankMenu:RegisterPage('account:page:transactions:' .. tostring(acc.id))
     TransactionPage:RegisterElement('header', {
         value = _U("transactions_header"),
         slot = 'header'
     })
     TransactionPage:RegisterElement('subheader', {
-        value = _U("transactions_subheader", tostring(acc.id)),
+        value = _U("transactions_subheader", tostring(accountNumber)),
         slot = 'header'
     })
     TransactionPage:RegisterElement('line', {
