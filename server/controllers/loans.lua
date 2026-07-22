@@ -230,24 +230,31 @@ end
 -- Determine interest rate for a character (optionally by bank)
 function GetCharacterLoanInterest(character_id, bank_id)
     if not character_id then return 10.0 end
-    local row
+    local function queryRate(sql, params)
+        local ok, rows = pcall(MySQL.query.await, sql, params)
+        if not ok then
+            devPrint('Loan interest lookup failed:', tostring(rows))
+            return nil
+        end
+        local rate = rows and rows[1] and tonumber(rows[1].interest) or nil
+        if not rate or rate ~= rate or rate < 0 or rate > 100 then return nil end
+        return rate
+    end
+
     -- 1) character + bank specific override
     if bank_id then
-        row = MySQL.query.await('SELECT `interest` FROM `bcc_loan_interest_rates` WHERE `character_id` = ? AND `bank_id` = ? LIMIT 1;', { character_id, bank_id })
-        if row and row[1] and row[1].interest then
-            return tonumber(row[1].interest) or 10.0
-        end
+        local rate = queryRate('SELECT `interest` FROM `bcc_loan_interest_rates` WHERE `character_id` = ? AND `bank_id` = ? LIMIT 1;', { character_id, bank_id })
+        if rate then return rate end
+
         -- 2) bank default rate
-        local brow = MySQL.query.await('SELECT `interest` FROM `bcc_bank_interest_rates` WHERE `bank_id` = ? LIMIT 1;', { bank_id })
-        if brow and brow[1] and brow[1].interest then
-            return tonumber(brow[1].interest) or 10.0
-        end
+        rate = queryRate('SELECT `interest` FROM `bcc_bank_interest_rates` WHERE `bank_id` = ? LIMIT 1;', { bank_id })
+        if rate then return rate end
     end
+
     -- 3) character global default
-    row = MySQL.query.await('SELECT `interest` FROM `bcc_loan_interest_rates` WHERE `character_id` = ? AND `bank_id` = ? LIMIT 1;', { character_id, '0' })
-    if row and row[1] and row[1].interest then
-        return tonumber(row[1].interest) or 10.0
-    end
+    local rate = queryRate('SELECT `interest` FROM `bcc_loan_interest_rates` WHERE `character_id` = ? AND `bank_id` = ? LIMIT 1;', { character_id, '0' })
+    if rate then return rate end
+
     -- 4) fallback
     return 10.0
 end
