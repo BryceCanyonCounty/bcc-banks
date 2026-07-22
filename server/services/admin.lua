@@ -274,6 +274,12 @@ BccUtils.RPC:Register('Feather:Banks:CheckAdmin', function(_, cb, src)
 end)
 
 -- RPC: get/set bank rate
+local function isValidInterestRate(value)
+    local rate = tonumber(value)
+    return rate ~= nil and rate == rate and rate > -math.huge and rate < math.huge
+        and rate >= 0 and rate <= 100
+end
+
 BccUtils.RPC:Register('Feather:Banks:Admin:GetBankRate', function(params, cb, src)
     if not IsBankAdmin(src) then
         devPrint('[ADMIN] GetBankRate denied: no permission for src', src)
@@ -302,7 +308,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetBankRate', function(params, cb, sr
     end
     local bankId = NormalizeId(params and params.bank)
     local rate = tonumber(params and params.rate)
-    if not bankId or not rate then
+    if not bankId or not isValidInterestRate(rate) then
         devPrint('[ADMIN] SetBankRate invalid input bankId/rate:', bankId, rate)
         NotifyClient(src, _U('admin_invalid_input') or 'Invalid input', 'error', 3500)
         cb(false)
@@ -349,7 +355,7 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetCharRate', function(params, cb, sr
     local charId = tonumber(params and params.char)
     local bankId = NormalizeId(params and params.bank)
     local rate = tonumber(params and params.rate)
-    if not charId or not rate then
+    if not charId or not isValidInterestRate(rate) then
         devPrint('[ADMIN] SetCharRate invalid input charId/rate:', charId, rate)
         NotifyClient(src, _U('admin_invalid_input') or 'Invalid input', 'error', 3500)
         cb(false)
