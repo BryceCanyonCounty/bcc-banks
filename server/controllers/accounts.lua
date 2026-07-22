@@ -231,51 +231,64 @@ function GetAccountAccess(account, character)
 end
 
 function DepositCash(account, amount)
-    local result = MySQL.query.await('SELECT `cash` FROM `bcc_accounts` WHERE `id` = ? LIMIT 1;', { account })
-    local cash = result and result[1] and result[1].cash
-
-    if cash == nil then return false end
-
-    local newAmount = cash + amount
-    MySQL.query.await('UPDATE `bcc_accounts` SET `cash` = ? WHERE `id` = ?', { newAmount, account })
-    return true
+    amount = tonumber(amount)
+    if not account or not IsFinitePositiveNumber(amount) then return false end
+    local changed = MySQL.update.await(
+        'UPDATE `bcc_accounts` SET `cash` = `cash` + ? WHERE `id` = ?',
+        { amount, account }
+    )
+    return (tonumber(changed) or 0) == 1
 end
 
 function DepositGold(account, amount)
-    local result = MySQL.query.await('SELECT `gold` FROM `bcc_accounts` WHERE `id` = ? LIMIT 1;', { account })
-    local gold = result and result[1] and result[1].gold
-
-    if gold == nil then return false end
-
-    local newAmount = gold + amount
-    MySQL.query.await('UPDATE `bcc_accounts` SET `gold` = ? WHERE `id` = ?', { newAmount, account })
-    return true
+    amount = tonumber(amount)
+    if not account or not IsFinitePositiveNumber(amount) then return false end
+    local changed = MySQL.update.await(
+        'UPDATE `bcc_accounts` SET `gold` = `gold` + ? WHERE `id` = ?',
+        { amount, account }
+    )
+    return (tonumber(changed) or 0) == 1
 end
 
 function WithdrawCash(account, amount)
-    local result = MySQL.query.await('SELECT `cash`, `is_frozen` FROM `bcc_accounts` WHERE `id` = ? LIMIT 1;', { account })
-    local row = result and result[1]
-    if not row then return false end
-    if row.is_frozen == 1 or row.is_frozen == true then return false end
-    local cash = row.cash
-
-    if cash == nil or (cash - amount) < 0 then return false end
-
-    MySQL.query.await('UPDATE `bcc_accounts` SET `cash` = ? WHERE `id` = ?', { cash - amount, account })
-    return true
+    amount = tonumber(amount)
+    if not account or not IsFinitePositiveNumber(amount) then return false end
+    local changed = MySQL.update.await(
+        'UPDATE `bcc_accounts` SET `cash` = `cash` - ? WHERE `id` = ? AND `cash` >= ? AND `is_frozen` = 0',
+        { amount, account, amount }
+    )
+    return (tonumber(changed) or 0) == 1
 end
 
 function WithdrawGold(account, amount)
-    local result = MySQL.query.await('SELECT `gold`, `is_frozen` FROM `bcc_accounts` WHERE `id` = ? LIMIT 1;', { account })
-    local row = result and result[1]
-    if not row then return false end
-    if row.is_frozen == 1 or row.is_frozen == true then return false end
-    local gold = row.gold
+    amount = tonumber(amount)
+    if not account or not IsFinitePositiveNumber(amount) then return false end
+    local changed = MySQL.update.await(
+        'UPDATE `bcc_accounts` SET `gold` = `gold` - ? WHERE `id` = ? AND `gold` >= ? AND `is_frozen` = 0',
+        { amount, account, amount }
+    )
+    return (tonumber(changed) or 0) == 1
+end
 
-    if gold == nil or (gold - amount) < 0 then return false end
+function TransferAccountCash(fromAccount, toAccount, debitAmount, creditAmount)
+    debitAmount = tonumber(debitAmount)
+    creditAmount = tonumber(creditAmount)
+    if not fromAccount or not toAccount or fromAccount == toAccount
+        or not IsFinitePositiveNumber(debitAmount)
+        or not IsFinitePositiveNumber(creditAmount) then
+        return false
+    end
 
-    MySQL.query.await('UPDATE `bcc_accounts` SET `gold` = ? WHERE `id` = ?', { gold - amount, account })
-    return true
+    -- A self-join updates both balances in one SQL statement. The WHERE clause
+    -- atomically reserves the source funds, eliminating the read/update race.
+    local changed = MySQL.update.await([[
+        UPDATE `bcc_accounts` AS src
+        INNER JOIN `bcc_accounts` AS dst ON dst.`id` = ?
+        SET src.`cash` = src.`cash` - ?, dst.`cash` = dst.`cash` + ?
+        WHERE src.`id` = ? AND src.`cash` >= ? AND src.`is_frozen` = 0
+    ]], { toAccount, debitAmount, creditAmount, fromAccount, debitAmount })
+
+    return (tonumber(changed) or 0) == 2
 end
 
 function IsAccountLocked(account, src)

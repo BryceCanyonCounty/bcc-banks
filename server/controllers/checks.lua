@@ -63,13 +63,18 @@ end
 --  Write a check
 -- ─────────────────────────────────────────────────────────────
 BccUtils.RPC:Register('Feather:Banks:WriteCheck', function(params, cb, src)
+    if not (Config.Checks and Config.Checks.Enabled == true) or not IsPlayerNearBank(src) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
     local accountId = NormalizeId(params and params.account)
     local firstName = tostring((params and params.first_name) or ''):match('^%s*(.-)%s*$')
     local lastName  = tostring((params and params.last_name)  or ''):match('^%s*(.-)%s*$')
     local amount    = tonumber(params and params.amount)
     local memo      = tostring((params and params.memo) or '')
 
-    if not accountId or not amount or amount <= 0 or firstName == '' or lastName == '' then
+    if not accountId or not IsFinitePositiveNumber(amount) or firstName == '' or lastName == '' then
         NotifyClient(src, _U('invalid_check_recipient'), 'error', 4000)
         cb(false)
         return
@@ -133,6 +138,7 @@ end)
 --  Item mode    : scan inventory, validate each check_id in DB
 -- ─────────────────────────────────────────────────────────────
 BccUtils.RPC:Register('Feather:Banks:GetMyChecks', function(params, cb, src)
+    if not (Config.Checks and Config.Checks.Enabled == true) or not IsPlayerNearBank(src) then cb(false, {}) return end
     local user = VORPcore.getUser(src)
     if not user or not user.getUsedCharacter then cb(false, {}) return end
     local char   = user.getUsedCharacter
@@ -169,6 +175,7 @@ end)
 --  Get pending checks issued from an account (for voiding)
 -- ─────────────────────────────────────────────────────────────
 BccUtils.RPC:Register('Feather:Banks:GetIssuedChecks', function(params, cb, src)
+    if not (Config.Checks and Config.Checks.Enabled == true) or not IsPlayerNearBank(src) then cb(false, {}) return end
     local accountId = NormalizeId(params and params.account)
     if not accountId then cb(false, {}) return end
 
@@ -188,9 +195,23 @@ end)
 --  Cash a check
 -- ─────────────────────────────────────────────────────────────
 BccUtils.RPC:Register('Feather:Banks:CashCheck', function(params, cb, src)
+    if not (Config.Checks and Config.Checks.Enabled == true) or not IsPlayerNearBank(src) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
     local checkId = params and params.check_id
     if not checkId then
         NotifyClient(src, _U('error_invalid_check'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local check = GetCheck(checkId)
+    local sourceAccount = check and GetAccount(check.account_id)
+    if not sourceAccount or not IsPlayerNearBank(src, sourceAccount.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -217,9 +238,15 @@ BccUtils.RPC:Register('Feather:Banks:CashCheck', function(params, cb, src)
         end
     end
 
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        cb(false)
+        return
+    end
     local result = CashCheck(checkId, charId)
 
     if not result.status then
+        ReleasePlayerFinancialLock(src)
         local keyMap = {
             already_cashed = 'error_check_already_cashed',
             already_voided = 'error_check_voided',
@@ -231,12 +258,17 @@ BccUtils.RPC:Register('Feather:Banks:CashCheck', function(params, cb, src)
         return
     end
 
-    -- Remove the physical item after a successful cash
-    if useItem() and foundItemId then
-        removeCheckItem(src, foundItemId)
+    local credited = pcall(function() char.addCurrency(0, result.amount) end)
+    if not credited then
+        MySQL.update.await('UPDATE `bcc_checks` SET `status` = "pending", `cashed_at` = NULL WHERE `id` = ? AND `status` = "cashed"', { checkId })
+        ReleasePlayerFinancialLock(src)
+        cb(false)
+        return
     end
 
-    char.addCurrency(0, result.amount)
+    -- Remove the physical item after a successful cash
+    if useItem() and foundItemId then removeCheckItem(src, foundItemId) end
+    ReleasePlayerFinancialLock(src)
 
     NotifyClient(src, _U('check_cashed_notify', tostring(result.amount)), 'success', 4000)
     cb(true, { amount = result.amount })
@@ -246,6 +278,11 @@ end)
 --  Void a check (issuer or account admin, refunds account)
 -- ─────────────────────────────────────────────────────────────
 BccUtils.RPC:Register('Feather:Banks:VoidCheck', function(params, cb, src)
+    if not (Config.Checks and Config.Checks.Enabled == true) or not IsPlayerNearBank(src) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
     local checkId = params and params.check_id
     if not checkId then
         NotifyClient(src, _U('error_invalid_check'), 'error', 4000)
@@ -278,32 +315,10 @@ end)
 --  Double-clicking the bank_check item cashes it directly.
 --  Proximity to a bank is enforced server-side.
 -- ─────────────────────────────────────────────────────────────
-local function isNearBank(src)
-    local ped    = GetPlayerPed(src)
-    local coords = GetEntityCoords(ped)
-    if not coords then return false end
-
-    local banks = GetBanks()
-    if not banks then return false end
-
-    local threshold = (Config.PromptSettings and Config.PromptSettings.Distance) or 3.0
-    -- Give a little more room than the prompt distance so it doesn't feel unfair
-    local maxDist = threshold + 5.0
-
-    for _, bank in ipairs(banks) do
-        local bx = tonumber(bank.x) or 0
-        local by = tonumber(bank.y) or 0
-        local bz = tonumber(bank.z) or 0
-        local dist = #(vector3(coords.x, coords.y, coords.z) - vector3(bx, by, bz))
-        if dist <= maxDist then
-            return true
-        end
-    end
-    return false
-end
-
 exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
     local src = data.source
+
+    if not (Config.Checks and Config.Checks.Enabled == true) then return end
 
     -- VORP passes the full item as a JSON string under data.item
     local itemObj = {}
@@ -334,7 +349,7 @@ exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
     end
 
     -- Must be near a bank
-    if not isNearBank(src) then
+    if not IsPlayerNearBank(src) then
         NotifyClient(src, _U('error_check_not_at_bank'), 'error', 4000)
         return
     end
@@ -344,9 +359,14 @@ exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
     local char   = user.getUsedCharacter
     local charId = NormalizeId(char.charIdentifier)
 
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        return
+    end
     local result = CashCheck(checkId, charId)
 
     if not result.status then
+        ReleasePlayerFinancialLock(src)
         local keyMap = {
             already_cashed = 'error_check_already_cashed',
             already_voided = 'error_check_voided',
@@ -357,13 +377,17 @@ exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
         return
     end
 
+    local credited = pcall(function() char.addCurrency(0, result.amount) end)
+    if not credited then
+        MySQL.update.await('UPDATE `bcc_checks` SET `status` = "pending", `cashed_at` = NULL WHERE `id` = ? AND `status` = "cashed"', { checkId })
+        ReleasePlayerFinancialLock(src)
+        return
+    end
+
     -- Remove the item instance
     exports.vorp_inventory:subItemById(src, itemId, function(removed)
-        if not removed then
-            devPrint('[Checks] Warning: failed to remove check item id=', tostring(itemId))
-        end
+        if not removed then devPrint('[Checks] Warning: failed to remove check item id=', tostring(itemId)) end
     end)
-
-    char.addCurrency(0, result.amount)
+    ReleasePlayerFinancialLock(src)
     NotifyClient(src, _U('check_cashed_notify', tostring(result.amount)), 'success', 4000)
 end, GetCurrentResourceName())

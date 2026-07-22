@@ -19,7 +19,7 @@ function IsSDBAdmin(sdbId, character)
     )[1]
     if not row then return false end
     local lvl = tonumber(row.level)
-    return lvl and lvl <= (Config.AccessLevels and Config.AccessLevels.Admin or 1)
+    return lvl == (Config.AccessLevels and Config.AccessLevels.Admin or 1)
 end
 
 function HasSDBAccess(sdbId, character)
@@ -150,7 +150,7 @@ function IsSDBAdmin(sdbId, character)
     )[1]
     if not row then return false end
     local lvl = tonumber(row.level)
-    return lvl and lvl <= (Config.AccessLevels and Config.AccessLevels.Admin or 1)
+    return lvl == (Config.AccessLevels and Config.AccessLevels.Admin or 1)
 end
 
 function HasSDBAccess(sdbId, character)

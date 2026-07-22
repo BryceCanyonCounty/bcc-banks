@@ -3,28 +3,13 @@ BccUtils.RPC:Register('Feather:Banks:GetBanks', function(params, cb, src)
 end)
 
 BccUtils.RPC:Register('Feather:Banks:CreateBank', function(params, res, src)
-    -- Simple admin check (mirror of admin.lua IsBankAdmin logic)
-    local function isAdmin()
-        if src == 0 then return true end
-        local user = VORPcore.getUser(src)
-        if not user or not user.getUsedCharacter then return false end
-        local ch = user.getUsedCharacter
-        for _, g in ipairs(Config.adminGroups or {}) do
-            if ch.group == g then return true end
-        end
-        for _, j in ipairs(Config.AllowedJobs or {}) do
-            if ch.job == j then return true end
-        end
-        return false
-    end
-
-    if not isAdmin() then
+    if not IsBankAdmin or not IsBankAdmin(src) then
         NotifyClient(src, _U('admin_no_permission') or 'No permission', 'error', 3500)
         res(false)
         return
     end
 
-    local name = tostring((params and params.name) or 'New Bank')
+    local name = tostring((params and params.name) or 'New Bank'):sub(1, 64)
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then
         NotifyClient(src, 'Unable to determine your position.', 'error', 3500)
@@ -69,7 +54,10 @@ BccUtils.RPC:Register('Feather:Banks:SetBankerBusy', function(params, res, src)
     local state = params.state
 
     if state then
-        SetBankerBusy(bank, src)
+        if not SetBankerBusy(bank, src) then
+            if res then res(false) end
+            return
+        end
     else
         ClearBankerBusy(src)
     end

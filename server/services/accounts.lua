@@ -1,3 +1,14 @@
+local function cleanDescription(value, fallback)
+    local text = tostring(value or fallback or '')
+    text = text:gsub('[%z\1-\8\11\12\14-\31]', '')
+    return text:sub(1, 200)
+end
+
+local function isNearAccountBank(src, accountId)
+    local account = GetAccount(accountId)
+    return account and IsPlayerNearBank(src, account.bank_id)
+end
+
 BccUtils.RPC:Register('Feather:Banks:GetAccounts', function(params, cb, src)
     devPrint("GetAccounts RPC called. src=", src, "params=", params)
 
@@ -34,6 +45,12 @@ BccUtils.RPC:Register('Feather:Banks:GetAccounts', function(params, cb, src)
         return
     end
 
+    if not IsPlayerNearBank(src, bankId) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
     if type(GetAccounts) ~= 'function' then
         devPrint("GetAccounts is not available (nil). Ensure controllers are loaded before services.")
         NotifyClient(src, _U('error_db'), 'error', 4000)
@@ -60,6 +77,10 @@ BccUtils.RPC:Register('Feather:Banks:ListAccountsByBank', function(params, cb, s
     local bankId = NormalizeId(params and params.bank)
     devPrint('ListAccountsByBank RPC called. src=', src, 'bank=', bankId)
     if not bankId then
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, bankId) then
         cb(false)
         return
     end
@@ -116,6 +137,14 @@ BccUtils.RPC:Register('Feather:Banks:CreateAccount', function(params, cb, src)
         return
     end
 
+    if not IsPlayerNearBank(src, bank) then
+        NotifyClient(src, _U('error_not_at_bank'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    name = tostring(name):sub(1, 64)
+
     local ok, out = pcall(function()
         return CreateAccount(name, characterId, bank)
     end)
@@ -123,6 +152,12 @@ BccUtils.RPC:Register('Feather:Banks:CreateAccount', function(params, cb, src)
     if not ok then
         devPrint("CreateAccount failed:", out)
         NotifyClient(src, _U('error_unable_create_account'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    if type(out) == 'table' and out.status == false then
+        NotifyClient(src, out.message or _U('error_unable_create_account'), "error", 4000)
         cb(false)
         return
     end
@@ -165,6 +200,12 @@ BccUtils.RPC:Register('Feather:Banks:CloseAccount', function(params, cb, src)
         return
     end
 
+    if not IsPlayerNearBank(src, bank) then
+        NotifyClient(src, _U('error_not_at_bank'), "error", 4000)
+        cb(false)
+        return
+    end
+
     local ok, out = pcall(function()
         return CloseAccount(bank, account, characterId)
     end)
@@ -173,6 +214,12 @@ BccUtils.RPC:Register('Feather:Banks:CloseAccount', function(params, cb, src)
         devPrint("CloseAccount failed:", out)
         NotifyClient(src, _U('error_unable_close_account'), "error", 4000)
         NotifyClient(src, _U('error_db'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if type(out) == 'table' and out.status == false then
+        NotifyClient(src, out.message or _U('error_unable_close_account'), "error", 4000)
         cb(false)
         return
     end
@@ -291,13 +338,33 @@ end)
 BccUtils.RPC:Register('Feather:Banks:GetAccountAccessList', function(params, cb, src)
     devPrint("GetAccountAccessList RPC called. src=", src, "params=", params)
 
-    local account = NormalizeId(params.account)
+    local account = NormalizeId(params and params.account)
     devPrint("Parsed account ID:", account)
 
     if not account then
         devPrint("GetAccountAccessList: Invalid account ID.")
         NotifyClient(src, _U('error_invalid_account_id'), "error", 4000)
         NotifyClient(src, _U('error_invalid_account_id'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local user = VORPcore.getUser(src)
+    local char = user and user.getUsedCharacter
+    local requesterId = char and char.charIdentifier
+    if not requesterId or not (IsAccountOwner(account, requesterId) or IsAccountAdmin(account, requesterId)) then
+        NotifyClient(src, _U('error_no_permission'), 'error', 4000)
+        cb(false)
+        return
+    end
+    if not isNearAccountBank(src, accId) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -347,7 +414,7 @@ BccUtils.RPC:Register('Feather:Banks:GiveAccountAccess', function(params, cb, sr
 
     devPrint("GiveAccountAccess: account:", account, "name:", firstName, lastName, "level:", level, "requesterId:", requesterId)
 
-    if not requesterId or not account or firstName == '' or lastName == '' or not level then
+    if not requesterId or not account or firstName == '' or lastName == '' or not IsValidAccessLevel(level) then
         devPrint("GiveAccountAccess: Invalid input data.")
         NotifyClient(src, _U('error_invalid_data_provided'), "error", 4000)
         cb(false)
@@ -368,6 +435,12 @@ BccUtils.RPC:Register('Feather:Banks:GiveAccountAccess', function(params, cb, sr
     if not (IsAccountAdmin(account, requesterId) or IsAccountOwner(account, requesterId)) then
         devPrint("GiveAccountAccess: Source", requesterId, "is not admin or owner of account", account)
         NotifyClient(src, _U('error_no_permission'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -416,8 +489,8 @@ BccUtils.RPC:Register('Feather:Banks:RemoveAccountAccess', function(params, cb, 
     end
     local requesterId = user.getUsedCharacter.charIdentifier
 
-    local account = NormalizeId(params.account)
-    local target = tonumber(params.character)
+    local account = NormalizeId(params and params.account)
+    local target = tonumber(params and params.character)
 
     devPrint("Parsed inputs → account:", account, "target:", target, "requesterId:", requesterId)
 
@@ -435,6 +508,12 @@ BccUtils.RPC:Register('Feather:Banks:RemoveAccountAccess', function(params, cb, 
         devPrint("RemoveAccountAccess: Character", requesterId, "is not admin or owner of account", account)
         NotifyClient(src, _U('error_no_permission'), "error", 4000)
         NotifyClient(src, _U('error_no_permission'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -469,7 +548,7 @@ BccUtils.RPC:Register('Feather:Banks:DepositCash', function(params, cb, src)
 
     local account        = NormalizeId(params and params.account)
     local amount         = tonumber(params and params.amount)
-    local description    = (params and params.description) or "No description provided"
+    local description    = cleanDescription(params and params.description, "No description provided")
     local currentDollars = tonumber(char.money)
 
     devPrint("DepositCash inputs -> account:", account, "amount:", amount, "currentDollars:", currentDollars)
@@ -483,8 +562,14 @@ BccUtils.RPC:Register('Feather:Banks:DepositCash', function(params, cb, src)
         return
     end
 
-    if not amount or amount <= 0 then
+    if not IsFinitePositiveNumber(amount) then
         NotifyClient(src, _U('error_invalid_deposit_amount'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), "error", 4000)
         cb(false)
         return
     end
@@ -495,14 +580,27 @@ BccUtils.RPC:Register('Feather:Banks:DepositCash', function(params, cb, src)
         return
     end
 
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), "error", 4000)
+        cb(false)
+        return
+    end
+    local removed = pcall(function() char.removeCurrency(0, amount) end)
+    if not removed then
+        ReleasePlayerFinancialLock(src)
+        NotifyClient(src, _U('error_unable_deposit_cash'), "error", 4000)
+        cb(false)
+        return
+    end
     if not DepositCash(account, amount) then
+        pcall(function() char.addCurrency(0, amount) end)
+        ReleasePlayerFinancialLock(src)
         devPrint("DepositCash: DB update failed.")
         NotifyClient(src, _U('error_unable_deposit_cash') or 'Unable to deposit cash at this time.', "error", 4000)
         cb(false)
         return
     end
-
-    char.removeCurrency(0, amount)
+    ReleasePlayerFinancialLock(src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'deposit - cash', description)
 
     devPrint("DepositCash: success. account=", account, "amount=", amount)
@@ -525,7 +623,7 @@ BccUtils.RPC:Register('Feather:Banks:DepositGold', function(params, cb, src)
 
     local account     = NormalizeId(params and params.account)
     local amount      = tonumber(params and params.amount)
-    local description = (params and params.description) or "No description provided"
+    local description = cleanDescription(params and params.description, "No description provided")
     local currentGold = tonumber(char.gold)
 
     devPrint("DepositGold inputs -> account:", account, "amount:", amount, "currentGold:", currentGold)
@@ -539,8 +637,14 @@ BccUtils.RPC:Register('Feather:Banks:DepositGold', function(params, cb, src)
         return
     end
 
-    if not amount or amount <= 0 then
+    if not IsFinitePositiveNumber(amount) then
         NotifyClient(src, _U('error_invalid_deposit_amount'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), "error", 4000)
         cb(false)
         return
     end
@@ -551,14 +655,27 @@ BccUtils.RPC:Register('Feather:Banks:DepositGold', function(params, cb, src)
         return
     end
 
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), "error", 4000)
+        cb(false)
+        return
+    end
+    local removed = pcall(function() char.removeCurrency(1, amount) end)
+    if not removed then
+        ReleasePlayerFinancialLock(src)
+        NotifyClient(src, _U('error_unable_deposit_gold'), "error", 4000)
+        cb(false)
+        return
+    end
     if not DepositGold(account, amount) then
+        pcall(function() char.addCurrency(1, amount) end)
+        ReleasePlayerFinancialLock(src)
         devPrint("DepositGold: DB update failed.")
         NotifyClient(src, _U('error_unable_deposit_gold'), "error", 4000)
         cb(false)
         return
     end
-
-    char.removeCurrency(1, amount)
+    ReleasePlayerFinancialLock(src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'deposit - gold', description)
 
     devPrint("DepositGold: success. account=", account, "amount=", amount)
@@ -580,7 +697,7 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawCash', function(params, cb, src)
 
     local account     = NormalizeId(params and params.account)
     local amount      = tonumber(params and params.amount)
-    local description = (params and params.description) or "No description provided"
+    local description = cleanDescription(params and params.description, "No description provided")
 
     devPrint("WithdrawCash inputs -> account:", account, "amount:", amount)
 
@@ -593,8 +710,14 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawCash', function(params, cb, src)
         return
     end
 
-    if not amount or amount <= 0 then
+    if not IsFinitePositiveNumber(amount) then
         NotifyClient(src, _U('error_invalid_withdraw_amount'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), "error", 4000)
         cb(false)
         return
     end
@@ -607,14 +730,27 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawCash', function(params, cb, src)
         return
     end
 
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), "error", 4000)
+        cb(false)
+        return
+    end
     if not WithdrawCash(account, amount) then
+        ReleasePlayerFinancialLock(src)
         devPrint("WithdrawCash: insufficient funds or DB failure.")
         NotifyClient(src, _U('error_insufficient_account_funds'), "error", 4000)
         cb(false)
         return
     end
-
-    char.addCurrency(0, amount)
+    local credited = pcall(function() char.addCurrency(0, amount) end)
+    if not credited then
+        DepositCash(account, amount)
+        ReleasePlayerFinancialLock(src)
+        NotifyClient(src, _U('error_unable_withdraw'), "error", 4000)
+        cb(false)
+        return
+    end
+    ReleasePlayerFinancialLock(src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'withdraw - cash', description)
 
     devPrint("WithdrawCash: success. account=", account, "amount=", amount)
@@ -636,7 +772,7 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawGold', function(params, cb, src)
 
     local account     = NormalizeId(params and params.account)
     local amount      = tonumber(params and params.amount)
-    local description = (params and params.description) or "No description provided"
+    local description = cleanDescription(params and params.description, "No description provided")
 
     devPrint("WithdrawGold inputs -> account:", account, "amount:", amount)
 
@@ -649,8 +785,14 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawGold', function(params, cb, src)
         return
     end
 
-    if not amount or amount <= 0 then
+    if not IsFinitePositiveNumber(amount) then
         NotifyClient(src, _U('error_invalid_withdraw_amount'), "error", 4000)
+        cb(false)
+        return
+    end
+
+    if not isNearAccountBank(src, account) then
+        NotifyClient(src, _U('error_not_at_bank'), "error", 4000)
         cb(false)
         return
     end
@@ -663,14 +805,27 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawGold', function(params, cb, src)
         return
     end
 
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), "error", 4000)
+        cb(false)
+        return
+    end
     if not WithdrawGold(account, amount) then
+        ReleasePlayerFinancialLock(src)
         devPrint("WithdrawGold: insufficient funds or DB failure.")
         NotifyClient(src, _U('error_insufficient_account_funds'), "error", 4000)
         cb(false)
         return
     end
-
-    char.addCurrency(1, amount)
+    local credited = pcall(function() char.addCurrency(1, amount) end)
+    if not credited then
+        DepositGold(account, amount)
+        ReleasePlayerFinancialLock(src)
+        NotifyClient(src, _U('error_unable_withdraw'), "error", 4000)
+        cb(false)
+        return
+    end
+    ReleasePlayerFinancialLock(src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'withdraw - gold', description)
 
     devPrint("WithdrawGold: success. account=", account, "amount=", amount)
@@ -701,7 +856,7 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
     local toAccountNumber = params and params.toAccountNumber
     local toAccountId = NormalizeId(params and params.toAccountId)
     local amount = tonumber(params and params.amount)
-    local description = (params and params.description) or "Bank transfer"
+    local description = cleanDescription(params and params.description, "Bank transfer")
 
     devPrint(
         "Inputs -> fromAccount:", fromAccountId,
@@ -711,7 +866,7 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
         "desc:", description
     )
 
-    if not fromAccountId or (not toAccountNumber and not toAccountId) or not amount or amount <= 0 then
+    if not fromAccountId or (not toAccountNumber and not toAccountId) or not IsFinitePositiveNumber(amount) then
         NotifyClient(src, _U('error_invalid_transfer_input'), 'error', 4000)
         cb(false)
         return
@@ -728,6 +883,12 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
     local fromAcc = GetAccount(fromAccountId)
     if not fromAcc then
         NotifyClient(src, _U('error_invalid_account'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not IsPlayerNearBank(src, fromAcc.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -783,21 +944,11 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
         return
     end
 
-    -- Perform updates; try to keep consistent even without DB transaction
-    if not WithdrawCash(fromAcc.id, totalDebit) then
-        devPrint("WithdrawCash failed or insufficient funds during DB update")
+    -- Debit and credit in one SQL statement so concurrent requests cannot spend
+    -- the same source balance or leave a half-completed transfer.
+    if not TransferAccountCash(fromAcc.id, toAcc.id, totalDebit, amount) then
+        devPrint("Atomic transfer failed or source funds changed")
         NotifyClient(src, _U('error_insufficient_account_funds'), 'error', 4000)
-        cb(false)
-        return
-    end
-
-    local depositOk = DepositCash(toAcc.id, amount)
-    devPrint("After withdraw -> attempting deposit to", toAcc.id, "amount:", amount, "ok?", depositOk)
-    if not depositOk then
-        -- Attempt to revert withdrawal if deposit failed
-        DepositCash(fromAcc.id, totalDebit)
-        devPrint("Deposit failed, reverted withdrawal of", totalDebit)
-        NotifyClient(src, _U('error_unable_transfer'), 'error', 4000)
         cb(false)
         return
     end

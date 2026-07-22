@@ -13,8 +13,10 @@ end
 
 function SetBankerBusy(bank, src)
     local key = NormalizeId(bank)
-    if not key then return end
+    if not key then return false end
+    if Bankers[key] ~= nil and Bankers[key] ~= src then return false end
     Bankers[key] = src
+    return true
 end
 
 function ClearBankerBusy(src)

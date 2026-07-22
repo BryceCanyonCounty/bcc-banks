@@ -120,16 +120,40 @@ end
 function ApproveLoan(loan_id, approver_char_id)
     local loan = GetLoan(loan_id)
     if not loan then return { status = false, message = 'Loan not found.' } end
-    if loan.status == 'approved' then return { status = true, loan = loan } end
+    if loan.status == 'approved' then
+        if loan.account_id and not loan.disbursed_account_id then
+            return { status = false, message = 'Loan approval is already being processed.' }
+        end
+        return { status = true, loan = loan }
+    end
     if loan.status == 'rejected' or loan.is_defaulted == 1 then
         return { status = false, message = 'Cannot approve rejected/defaulted loan.' }
     end
 
-    -- Disbursement: if account linked, deposit now; otherwise leave pending for player claim
+    -- Atomically transition pending -> approved before disbursing. Concurrent admin
+    -- requests cannot both pass this reservation.
+    local day = loan.last_game_day or 0
+    if exports and exports.weathersync and exports.weathersync.getTime then
+        local t = exports.weathersync:getTime() or {}
+        day = tonumber(t.day) or day or 0
+    end
+    local reserved = MySQL.update.await(
+        'UPDATE `bcc_loans` SET `status` = \'approved\', `approved_by` = ?, `approved_at` = NOW(), `last_game_day` = ? WHERE `id` = ? AND `status` = \'pending\'',
+        { approver_char_id, day, loan_id }
+    )
+    if (tonumber(reserved) or 0) ~= 1 then
+        return { status = false, message = 'Loan is no longer pending.' }
+    end
+
+    -- Disbursement: if account linked, deposit now; otherwise leave funds claimable.
     local amt = tonumber(loan.amount) or 0
     if loan.account_id then
         local ok = DepositCash(loan.account_id, amt)
         if not ok then
+            MySQL.update.await(
+                'UPDATE `bcc_loans` SET `status` = \'pending\', `approved_by` = NULL, `approved_at` = NULL WHERE `id` = ? AND `disbursed_account_id` IS NULL',
+                { loan_id }
+            )
             return { status = false, message = 'Failed to disburse funds to account.' }
         end
         local disburseDesc = _U and _U('loan_disbursement_desc') or 'Loan disbursed to account'
@@ -139,14 +163,6 @@ function ApproveLoan(loan_id, approver_char_id)
         -- No immediate disbursement; player can claim to their chosen account later
     end
 
-    -- Capture current game day at approval time
-    local day = loan.last_game_day or 0
-    if exports and exports.weathersync and exports.weathersync.getTime then
-        local t = exports.weathersync:getTime() or {}
-        day = tonumber(t.day) or day or 0
-    end
-
-    MySQL.query.await('UPDATE `bcc_loans` SET `status` = \'approved\', `approved_by` = ?, `approved_at` = NOW(), `last_game_day` = ? WHERE `id` = ?', { approver_char_id, day, loan_id })
     local updated = GetLoan(loan_id)
     return { status = true, loan = updated }
 end
@@ -174,14 +190,27 @@ function ClaimLoanToAccount(loan_id, account_id, character_id)
     if not (IsAccountOwner(account_id, character_id) or IsAccountAdmin(account_id, character_id)) then
         return { status = false, message = 'Insufficient Access.' }
     end
+    -- Reserve the one-time claim before crediting the account. Only one concurrent
+    -- request can change a NULL disbursement marker.
+    local reserved = MySQL.update.await(
+        'UPDATE `bcc_loans` SET `disbursed_account_id` = ?, `disbursed_at` = NOW() WHERE `id` = ? AND `status` = \'approved\' AND `disbursed_account_id` IS NULL',
+        { account_id, loan.id }
+    )
+    if (tonumber(reserved) or 0) ~= 1 then
+        return { status = false, message = 'Loan funds already disbursed.' }
+    end
+
     local amt = tonumber(loan.amount) or 0
     local ok = DepositCash(account_id, amt)
     if not ok then
+        MySQL.update.await(
+            'UPDATE `bcc_loans` SET `disbursed_account_id` = NULL, `disbursed_at` = NULL WHERE `id` = ? AND `disbursed_account_id` = ?',
+            { loan.id, account_id }
+        )
         return { status = false, message = 'Unable to deposit into the selected account.' }
     end
         local claimDesc = _U and _U('loan_claim_transaction_desc') or 'Loan disbursed to account (claimed)'
         AddLoanTransaction(loan.id, loan.character_id, amt, 'loan - disbursement', claimDesc)
-    MySQL.query.await('UPDATE `bcc_loans` SET `disbursed_account_id` = ?, `disbursed_at` = NOW() WHERE `id` = ?', { account_id, loan.id })
     local updated = GetLoan(loan_id)
     return { status = true, loan = updated }
 end
