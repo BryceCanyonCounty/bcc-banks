@@ -225,6 +225,8 @@ Config = {
 		Attempts = 3,               -- How many attempts the minigame provides
 		PromptKey = 0xCEFD9220,     -- Default: Key "E" (same as bcc-doorlocks)
 		Radius = 1.6,               -- Distance to door center to show prompt
+		RequireLineOfSight = true,  -- Prevent interaction with doors through walls
+		DoorSearchRadius = 1.0,     -- Radius used to resolve the door's physical map object
 		RelockSeconds = 0,          -- Optional: re-lock after N seconds (0 = never)
 		NotifyOnMissing = true,     -- Notify if lockpick resource is missing
 		RequireItem = false,        -- If true, checks for item before minigame
