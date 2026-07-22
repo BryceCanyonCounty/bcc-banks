@@ -51,28 +51,46 @@ local function ensureDoorRegistered(doorHash)
   end
 end
 
+local function canInteractWithDoor(ped, doorHash, pos)
+  if lockpickCfg.RequireLineOfSight == false then
+    return true
+  end
+
+  -- Door hashes in Config.Doors are also the model hashes used by the map objects.
+  -- Resolve the actual entity so the door itself counts as visible, while walls and
+  -- other map geometry between the player and the door block the prompt.
+  local searchRadius = tonumber(lockpickCfg.DoorSearchRadius or 1.0) or 1.0
+  local doorEntity = GetClosestObjectOfType(pos.x, pos.y, pos.z, searchRadius, doorHash, false, false, false)
+  if not doorEntity or doorEntity == 0 or not DoesEntityExist(doorEntity) then
+    return false
+  end
+
+  return HasEntityClearLosToEntity(ped, doorEntity, 17)
+end
+
 local function tryLockpickDoor(doorHash)
-  -- Optional item gate
-  if lockpickCfg.RequireItem then
-    local p = promise.new()
-    local handler
-    handler = AddEventHandler('feather-banks:lockpick:canStart:cb', function(can)
-      if handler then RemoveEventHandler(handler) end
-      handler = nil
-      p:resolve(can and true or false)
-    end)
-    TriggerServerEvent('feather-banks:lockpick:canStart')
-    local ok = Citizen.Await(p)
-    if not ok then
-      Notify('You need a lockpick', 'error', 2500)
-      return
+  -- Every attempt receives a short-lived server authorization. Item possession is
+  -- additionally checked server-side when RequireItem is enabled.
+  local p = promise.new()
+  local handler
+  handler = AddEventHandler('feather-banks:lockpick:canStart:cb', function(can)
+    if handler then RemoveEventHandler(handler) end
+    handler = nil
+    p:resolve(can and true or false)
+  end)
+  TriggerServerEvent('feather-banks:lockpick:canStart', doorHash)
+  local authorized = Citizen.Await(p)
+  if not authorized then
+    if lockpickCfg.RequireItem then
+      Notify(_U('lockpick_need_item'), 'error', 2500)
     end
+    return
   end
 
   local res = lockpickCfg.Resource or 'lockpick'
   if GetResourceState(res) ~= 'started' then
     if lockpickCfg.NotifyOnMissing then
-      Notify(('Lockpick resource "%s" not started.'):format(res), 'error', 4000)
+      Notify(_U('lockpick_resource_missing', res), 'error', 4000)
     end
     return
   end
@@ -84,18 +102,9 @@ local function tryLockpickDoor(doorHash)
   end)
 
   if ok then
-    DoorSystemSetDoorState(doorHash, 0) -- unlock
-    DoorSystemSetOpenRatio(doorHash, 0.0, true)
-    Notify('Lockpick succeeded', 'success', 3000)
-
-    local relock = tonumber(lockpickCfg.RelockSeconds or 0) or 0
-    if relock > 0 then
-      SetTimeout(relock * 1000, function()
-        DoorSystemSetDoorState(doorHash, 1) -- re-lock
-      end)
-    end
+    TriggerServerEvent('feather-banks:lockpick:onSuccess', doorHash)
   else
-    Notify('Lockpick failed', 'error', 2500)
+    Notify(_U('lockpick_failed'), 'error', 2500)
     DoorSystemSetDoorState(doorHash, 1) -- ensure door stays locked so prompt appears again
     DoorSystemSetOpenRatio(doorHash, 0.0, true)
     -- signal server to handle durability / consume item
@@ -103,11 +112,22 @@ local function tryLockpickDoor(doorHash)
   end
 end
 
+RegisterNetEvent('feather-banks:lockpick:setDoorState', function(doorHash, state, actorSrc)
+  doorHash = tonumber(doorHash)
+  if not doorHash or Config.Doors[doorHash] == nil then return end
+  ensureDoorRegistered(doorHash)
+  DoorSystemSetDoorState(doorHash, state)
+  DoorSystemSetOpenRatio(doorHash, 0.0, true)
+  if state == 0 and actorSrc == GetPlayerServerId(PlayerId()) then
+    Notify(_U('lockpick_success'), 'success', 3000)
+  end
+end)
+
 CreateThread(function()
   if not Prompts then return end
 
   local group = Prompts:SetupPromptGroup()
-  local prompt = group:RegisterPrompt('Lockpick Door', lockpickCfg.PromptKey or 0xCEFD9220, 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
+  local prompt = group:RegisterPrompt(_U('lockpick_door_prompt'), lockpickCfg.PromptKey or 0xCEFD9220, 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
 
   while true do
     Wait(5)
@@ -119,7 +139,7 @@ CreateThread(function()
       local pos = BankDoorPositions[doorHash]
       if pos then
         local dist = #(pC - pos)
-        if dist <= (lockpickCfg.Radius or 1.6) then
+        if dist <= (lockpickCfg.Radius or 1.6) and canInteractWithDoor(ped, doorHash, pos) then
           ensureDoorRegistered(doorHash)
           local doorState = DoorSystemGetDoorState(doorHash)
           if doorState ~= 0 then
