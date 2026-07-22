@@ -315,7 +315,9 @@ end)
 --  Double-clicking the bank_check item cashes it directly.
 --  Proximity to a bank is enforced server-side.
 -- ─────────────────────────────────────────────────────────────
-exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
+AddEventHandler('Feather:Banks:DatabaseReady', function(checkItemReady)
+if checkItemReady and Config.Checks and Config.Checks.Enabled == true and useItem() then
+    exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
     local src = data.source
 
     if not (Config.Checks and Config.Checks.Enabled == true) then return end
@@ -390,4 +392,6 @@ exports.vorp_inventory:registerUsableItem(checkItemName(), function(data)
     end)
     ReleasePlayerFinancialLock(src)
     NotifyClient(src, _U('check_cashed_notify', tostring(result.amount)), 'success', 4000)
-end, GetCurrentResourceName())
+    end, GetCurrentResourceName())
+end
+end)
