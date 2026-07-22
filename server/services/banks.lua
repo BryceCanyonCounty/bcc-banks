@@ -38,11 +38,15 @@ end)
 
 BccUtils.RPC:Register('Feather:Banks:GetBankerBusy', function(params, res, src)
     if not Config.UseBankerBusy then
+        res(true, false)
+        return
+    end
+    local bank = params and params.bank
+    if not NormalizeId(bank) then
         res(false)
         return
     end
-    local bank = params.bank
-    res(IsBankerBusy(bank, src))
+    res(true, IsBankerBusy(bank, src))
 end)
 
 BccUtils.RPC:Register('Feather:Banks:SetBankerBusy', function(params, res, src)
