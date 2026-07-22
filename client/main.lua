@@ -1,7 +1,5 @@
 local IsReady = false
-Banks = {}
-
-local IsReady = false
+local IsBankLoopRunning = false
 Banks = {}
 
 RegisterCommand('banksReady', function(src, args, rawCommand)  -- correct param order
@@ -60,6 +58,12 @@ end
 })
 
 RegisterNetEvent('Feather:Banks:Start', function()
+    if IsBankLoopRunning then
+        devPrint("DEBUG: Bank proximity loop is already running; ignoring duplicate start.")
+        return
+    end
+
+    IsBankLoopRunning = true
     devPrint("DEBUG: Feather:Banks:Start event triggered.")
     BankOpen()
     BankClosed()
@@ -167,8 +171,12 @@ RegisterNetEvent('Feather:Banks:Start', function()
                     end
                 else
                     if distance <= Config.NPCSettings.Distance then
-                        if not bank.npc then
+                        if not bank.npc and not bank.npcSpawning then
+                            -- Ped creation can yield while the model loads. Mark the bank first so
+                            -- another loop/event cannot create a second teller in the meantime.
+                            bank.npcSpawning = true
                             bank.npc = AddNPC(bank)
+                            bank.npcSpawning = false
                             --print("DEBUG: Added NPC for bank " .. bank.name)
                         end
                     else
@@ -209,6 +217,8 @@ RegisterNetEvent('Feather:Banks:Start', function()
             Wait(1000) -- Adjust the sleep time to avoid unnecessary processing
         end
     end
+
+    IsBankLoopRunning = false
 end)
 
 function CleanUp()
@@ -219,6 +229,7 @@ function CleanUp()
 	FeatherBankMenu:Close()
 	Banks = {}
 	IsReady = false
+    IsBankLoopRunning = false
 end
 
 AddEventHandler('onResourceStop', function(resourceName)
@@ -233,9 +244,15 @@ end)
 -- Server-triggered refresh after admin changes (hours etc.)
 RegisterNetEvent('Feather:Banks:Refresh', function()
     devPrint("DEBUG: Refresh event received; reloading banks.")
-    local ok; ok, Banks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', {})
-    if not ok or not Banks then
+    local ok, refreshedBanks = BccUtils.RPC:CallAsync('Feather:Banks:GetBanks', {})
+    if not ok or not refreshedBanks then
         devPrint("DEBUG: Refresh failed to load banks.")
         return
     end
+
+    -- Remove entities owned by the old table before replacing it. Otherwise their
+    -- handles are lost and the next proximity pass spawns tellers on top of them.
+    ClearNPCs()
+    ClearBlips()
+    Banks = refreshedBanks
 end)
