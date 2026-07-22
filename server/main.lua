@@ -4,6 +4,12 @@ AddEventHandler('feather:character:logout', function(src)
 	ClearAccountLocks(src)
 end)
 
+AddEventHandler('playerDropped', function()
+	local src = source
+	ClearBankerBusy(src)
+	ClearAccountLocks(src)
+end)
+
 -- Backfill SDB inventories for rows created before VORP integration
 CreateThread(function()
 	Wait(2000)
