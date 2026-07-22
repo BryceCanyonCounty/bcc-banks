@@ -11,6 +11,21 @@ BccUtils.RPC:Register('Feather:Banks:GetTransactions', function(params, cb, src)
         return
     end
 
+    local user = VORPcore.getUser(src)
+    local char = user and user.getUsedCharacter
+    local characterId = char and char.charIdentifier
+    if not characterId or not (HasAccountAccess(account, characterId) or IsAccountOwner(account, characterId)) then
+        NotifyClient(src, _U('error_insufficient_access'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local accountRow = GetAccount(account)
+    if not accountRow or not IsPlayerNearBank(src, accountRow.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
     local ok, rows = pcall(function()
         return GetAccountTransactions(account)
     end)

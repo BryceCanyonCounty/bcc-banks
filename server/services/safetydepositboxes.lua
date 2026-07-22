@@ -1,3 +1,8 @@
+local function getSDBBankId(sdbId)
+    local row = MySQL.single.await('SELECT `bank_id` FROM `bcc_safety_deposit_boxes` WHERE `id` = ? LIMIT 1', { sdbId })
+    return row and row.bank_id or nil
+end
+
 BccUtils.RPC:Register('Feather:Banks:GetSDBs', function(params, cb, src)
     local user = VORPcore.getUser(src)
     if not user then
@@ -19,6 +24,12 @@ BccUtils.RPC:Register('Feather:Banks:GetSDBs', function(params, cb, src)
     if not characterId or not bankId then
         devPrint("GetSDBs: invalid inputs", "characterId=", characterId, "bankId=", bankId)
         NotifyClient(src, _U('error_invalid_character_or_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not IsPlayerNearBank(src, bankId) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -55,6 +66,11 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
         NotifyClient(src, _U('error_invalid_data'), 'error', 4000)
         return cb(false)
     end
+    if not IsPlayerNearBank(src, bank) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        return cb(false)
+    end
+    name = tostring(name):sub(1, 64)
 
     -- resolve size & price from config (case-insensitive)
     local sizes = Config.SafetyDepositBoxes.Sizes or {}
@@ -73,7 +89,7 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
     local CURRENCY = { cash = 0, gold = 1 }
     local currencyId = CURRENCY[(payWith == 'gold') and 'gold' or 'cash']
     local price = (payWith == 'gold') and (sz.GoldPrice or 0) or (sz.CashPrice or 0)
-    if price <= 0 then
+    if not IsFinitePositiveNumber(price) then
         NotifyClient(src, _U('error_invalid_data'), 'error', 4000)
         return cb(false)
     end
@@ -88,6 +104,10 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
         end
         return cb(false)
     end
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        return cb(false)
+    end
 
     -- try to charge first so we don't create resources the player can't pay for
     local charged = false
@@ -96,6 +116,7 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
         charged = true
     end)
     if not chargeOk then
+        ReleasePlayerFinancialLock(src)
         devPrint("CreateSDB charge failed:", tostring(chargeErr))
         NotifyClient(src, _U('error_unable_create_sdb'), 'error', 4000)
         return cb(false)
@@ -108,6 +129,7 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
         if charged then pcall(function() if char.addCurrency then char.addCurrency(currencyId, price) end end) end
         devPrint("CreateSDB DB failed:", tostring(ok and (szFromCtrl or "unknown") or boxOrErr))
         NotifyClient(src, _U('error_unable_create_sdb'), 'error', 4000)
+        ReleasePlayerFinancialLock(src)
         return cb(false)
     end
     local box = boxOrErr
@@ -123,7 +145,7 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
         exports.vorp_inventory:registerInventory({
             id = invId,
             name = invName,
-            limit = 100,
+            limit = tonumber(szCfg.MaxWeight) or 100,
             acceptWeapons = true,
             shared = true,
             ignoreItemStackLimit = ignoreItemLimits,
@@ -154,10 +176,12 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
         end)
         devPrint("CreateSDB: inventory registration failed:", tostring(invErr))
         NotifyClient(src, _U('error_unable_create_sdb'), 'error', 4000)
+        ReleasePlayerFinancialLock(src)
         return cb(false)
     end
 
     -- success (client will show its own toast)
+    ReleasePlayerFinancialLock(src)
     cb(true, box)
 end)
 
@@ -247,12 +271,17 @@ BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
 
     -- Always query our table name directly
     local row = MySQL.query.await(
-        'SELECT `inventory_id`,`name`,`size` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
+        'SELECT `inventory_id`,`name`,`size`,`bank_id` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
         { sdbId }
     )[1]
     if not row then
         devPrint("OpenSDB: SDB row not found for id", sdbId)
         NotifyClient(src, _U('error_sdb_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, row.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -324,6 +353,20 @@ BccUtils.RPC:Register('Feather:Banks:GetSDBAccessList', function(params, cb, src
         return
     end
 
+    local user = VORPcore.getUser(src)
+    local char = user and user.getUsedCharacter
+    local requesterId = char and char.charIdentifier
+    if not requesterId or not (IsSDBOwner(sdbId, requesterId) or IsSDBAdmin(sdbId, requesterId)) then
+        NotifyClient(src, _U('error_no_permission'), 'error', 4000)
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, getSDBBankId(sdbId)) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
     local rawAccessList = GetSDBAccessList(sdbId)
     local accessList = {}
 
@@ -377,7 +420,7 @@ BccUtils.RPC:Register('Feather:Banks:AddSDBAccess', function(params, cb, src)
 
     devPrint("AddSDBAccess: sdbId:", sdbId, "name:", firstName, lastName, "level:", level, "requesterId:", requesterId)
 
-    if not requesterId or not sdbId or firstName == '' or lastName == '' or not level then
+    if not requesterId or not sdbId or firstName == '' or lastName == '' or not IsValidAccessLevel(level) then
         devPrint("AddSDBAccess: Invalid input data.")
         NotifyClient(src, _U('error_invalid_data_provided'), "error", 4000)
         cb(false)
@@ -398,6 +441,11 @@ BccUtils.RPC:Register('Feather:Banks:AddSDBAccess', function(params, cb, src)
     if not (IsSDBAdmin(sdbId, requesterId) or IsSDBOwner(sdbId, requesterId)) then
         devPrint("AddSDBAccess: Source", requesterId, "is not admin or owner of SDB", sdbId)
         NotifyClient(src, _U('error_no_permission'), "error", 4000)
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, getSDBBankId(sdbId)) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -463,6 +511,11 @@ BccUtils.RPC:Register('Feather:Banks:RemoveSDBAccess', function(params, cb, src)
     if not (IsSDBAdmin(sdbId, requesterId) or IsSDBOwner(sdbId, requesterId)) then
         devPrint("RemoveSDBAccess: Character", requesterId, "is not admin or owner of SDB", sdbId)
         NotifyClient(src, _U('error_no_permission'), "error", 4000)
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, getSDBBankId(sdbId)) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end

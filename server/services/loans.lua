@@ -38,6 +38,8 @@ BccBanksInternal.formatCurrency = formatCurrency
 BccBanksInternal.safeFormat = safeFormat
 BccBanksInternal.formatTimestamp = formatTimestamp
 
+local ActiveLoanRepayments = {}
+
 local function getReminderConfig()
     local timing = Config.LoanTiming or {}
     local reminders = timing.DailyReminders or {}
@@ -57,6 +59,17 @@ local function getSourceForCharacter(charIdentifier)
         end
     end
     return nil
+end
+
+local function canViewLoan(src, loan)
+    if not loan then return false end
+    if IsBankAdmin and IsBankAdmin(src) then return true end
+    local user = VORPcore.getUser(src)
+    local char = user and user.getUsedCharacter
+    local characterId = char and char.charIdentifier
+    if not characterId then return false end
+    if IdsEqual(loan.character_id, characterId) then return true end
+    return loan.account_id and (HasAccountAccess(loan.account_id, characterId) or IsAccountOwner(loan.account_id, characterId)) or false
 end
 
 local function sendDailyReminder(loanRow, info, elapsedDays, dueDays)
@@ -129,6 +142,12 @@ BccUtils.RPC:Register('Feather:Banks:GetLoans', function(params, cb, src)
         cb(false)
         return
     end
+    local targetBankId = bank_id or GetBankIdForAccount(account_id)
+    if not targetBankId or not IsPlayerNearBank(src, targetBankId) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
     list = list or {}
     for _, loan in ipairs(list) do
         loan.created_at_display = (BccBanksInternal and BccBanksInternal.formatTimestamp and BccBanksInternal.formatTimestamp(loan.created_at)) or formatTimestamp(loan.created_at)
@@ -141,6 +160,17 @@ BccUtils.RPC:Register('Feather:Banks:GetLoan', function(params, cb, src)
     local loan_id = NormalizeId(params and params.loan)
     if not loan_id then
         NotifyClient(src, _U('error_invalid_loan_id'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local loan = GetLoan(loan_id)
+    if not canViewLoan(src, loan) then
+        NotifyClient(src, _U('error_no_permission'), 'error', 4000)
+        cb(false)
+        return
+    end
+    if not IsBankAdmin(src) and not IsPlayerNearBank(src, loan.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -164,6 +194,17 @@ BccUtils.RPC:Register('Feather:Banks:GetLoanTransactions', function(params, cb, 
     local loan = GetLoan(loan_id)
     if not loan then
         NotifyClient(src, _U('error_loan_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not canViewLoan(src, loan) then
+        NotifyClient(src, _U('error_no_permission'), 'error', 4000)
+        cb(false)
+        return
+    end
+    if not IsBankAdmin(src) and not IsPlayerNearBank(src, loan.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -196,6 +237,13 @@ BccUtils.RPC:Register('Feather:Banks:ClaimLoanDisbursement', function(params, cb
     local account_id = NormalizeId(params and params.account)
     if not loan_id or not account_id then
         NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local claimLoan = GetLoan(loan_id)
+    if not claimLoan or not IsPlayerNearBank(src, claimLoan.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -237,7 +285,8 @@ BccUtils.RPC:Register('Feather:Banks:CreateLoan', function(params, cb, src)
     local amount     = tonumber(params and params.amount)
     local duration   = tonumber(params and params.duration) or 0
 
-    if (not account_id and not bankId) or not amount or amount <= 0 then
+    if (not account_id and not bankId) or not IsFinitePositiveNumber(amount)
+        or not IsFinitePositiveNumber(duration) or duration % 1 ~= 0 or duration > 120 then
         NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
         cb(false)
         return
@@ -253,6 +302,12 @@ BccUtils.RPC:Register('Feather:Banks:CreateLoan', function(params, cb, src)
         end
     elseif not bankId then
         NotifyClient(src, _U('error_invalid_bank') or 'Invalid bank.', 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not IsPlayerNearBank(src, bankId) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -291,7 +346,17 @@ BccUtils.RPC:Register('Feather:Banks:GetLoanRate', function(params, cb, src)
         return
     end
     local account_id = NormalizeId(params and params.account)
+    if account_id and not (HasAccountAccess(account_id, characterId) or IsAccountOwner(account_id, characterId)) then
+        NotifyClient(src, _U('error_insufficient_access'), 'error', 4000)
+        cb(false)
+        return
+    end
     local bankId = account_id and GetBankIdForAccount(account_id) or NormalizeId(params and params.bank)
+    if not bankId or not IsPlayerNearBank(src, bankId) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
     local rate = GetCharacterLoanInterest(characterId, bankId)
     cb(true, rate)
 end)
@@ -370,7 +435,7 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
     local loan_id   = NormalizeId(params and params.loan)
     local amount    = tonumber(params and params.amount)
 
-    if not loan_id or not amount or amount <= 0 then
+    if not loan_id or not IsFinitePositiveNumber(amount) then
         NotifyClient(src, _U('error_invalid_input'), 'error', 4000)
         cb(false)
         return
@@ -380,6 +445,12 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
     local loanRow = GetLoan(loan_id)
     if not loanRow then
         NotifyClient(src, _U('error_loan_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not IsPlayerNearBank(src, loanRow.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
         return
     end
@@ -395,11 +466,31 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
         return
     end
 
+    if tonumber(loanRow.character_id) ~= tonumber(characterId) then
+        NotifyClient(src, _U('error_no_permission') or 'No permission.', 'error', 4000)
+        cb(false)
+        return
+    end
+    if ActiveLoanRepayments[loan_id] then
+        NotifyClient(src, _U('error_loan_operation_busy'), 'error', 4000)
+        cb(false)
+        return
+    end
+    ActiveLoanRepayments[loan_id] = true
+    if not AcquirePlayerFinancialLock(src) then
+        ActiveLoanRepayments[loan_id] = nil
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        cb(false)
+        return
+    end
+
     -- Check current outstanding and prevent over/extra payments
     local info = ComputeLoanOutstanding(loan_id)
     if info and info.outstanding then
         if info.outstanding <= 0 then
             NotifyClient(src, _U('error_loan_already_paid') or 'Loan already fully repaid.', 'success', 4000)
+            ReleasePlayerFinancialLock(src)
+            ActiveLoanRepayments[loan_id] = nil
             cb(false)
             return
         end
@@ -410,13 +501,8 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
 
     if not amount or amount <= 0 then
         NotifyClient(src, _U('invalid_repay_amount') or 'Enter a valid repayment amount.', 'error', 4000)
-        cb(false)
-        return
-    end
-
-    -- Ensure the loan belongs to this character
-    if tonumber(loanRow.character_id) ~= tonumber(characterId) then
-        NotifyClient(src, _U('error_no_permission') or 'No permission.', 'error', 4000)
+        ReleasePlayerFinancialLock(src)
+        ActiveLoanRepayments[loan_id] = nil
         cb(false)
         return
     end
@@ -425,24 +511,49 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
     local currentDollars = tonumber(char.money) or 0
     if currentDollars < amount then
         NotifyClient(src, _U('error_not_enough_cash', tostring(currentDollars)) or 'Not enough cash.', 'error', 4000)
+        ReleasePlayerFinancialLock(src)
+        ActiveLoanRepayments[loan_id] = nil
         cb(false)
         return
     end
-    char.removeCurrency(0, amount)
+    local removed = pcall(function() char.removeCurrency(0, amount) end)
+    if not removed then
+        ReleasePlayerFinancialLock(src)
+        ActiveLoanRepayments[loan_id] = nil
+        NotifyClient(src, _U('error_unable_repay_loan'), 'error', 4000)
+        cb(false)
+        return
+    end
 
     -- Record the repayment against the loan
     local repayDesc = _U and _U('loan_repayment_cash_desc') or 'Loan repayment from character cash'
-    AddLoanTransaction(loan_id, characterId, amount, 'loan - repayment', repayDesc)
+    local logged = pcall(AddLoanTransaction, loan_id, characterId, amount, 'loan - repayment', repayDesc)
+    if not logged then
+        pcall(function() char.addCurrency(0, amount) end)
+        ReleasePlayerFinancialLock(src)
+        ActiveLoanRepayments[loan_id] = nil
+        NotifyClient(src, _U('error_unable_repay_loan'), 'error', 4000)
+        cb(false)
+        return
+    end
 
     -- If fully repaid now, mark loan as paid
     local after = ComputeLoanOutstanding(loan_id)
     if after and (after.outstanding or 0) <= 0 then
         MySQL.query.await('UPDATE `bcc_loans` SET `status` = "paid", `is_defaulted` = 0 WHERE `id` = ?', { loan_id })
         if loanRow and loanRow.character_id then
-            SetOwnerAccountsFrozen(tonumber(loanRow.character_id), false)
+            local remainingDefaults = MySQL.scalar.await(
+                'SELECT COUNT(*) FROM `bcc_loans` WHERE `character_id` = ? AND (`status` = "defaulted" OR `is_defaulted` = 1)',
+                { loanRow.character_id }
+            )
+            if (tonumber(remainingDefaults) or 0) == 0 then
+                SetOwnerAccountsFrozen(tonumber(loanRow.character_id), false)
+            end
         end
     end
 
     NotifyClient(src, _U('success_loan_repaid'), 'success', 4000)
+    ReleasePlayerFinancialLock(src)
+    ActiveLoanRepayments[loan_id] = nil
     cb(true)
 end)

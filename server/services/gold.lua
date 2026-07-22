@@ -7,12 +7,17 @@ local function getRates()
     return buy, sell
 end
 
+local function canUseGoldExchange(src)
+    return Config.GoldExchange and Config.GoldExchange.Enabled == true and IsPlayerNearBank(src)
+end
+
 local function roundTo(value, decimals)
     local power = 10 ^ (decimals or 2)
     return math.floor((value * power) + 0.5) / power
 end
 
 BccUtils.RPC:Register('Feather:Banks:GetGoldRates', function(params, cb, src)
+    if not canUseGoldExchange(src) then cb(false) return end
     local buy, sell = getRates()
     cb(true, { buy = buy, sell = sell })
 end)
@@ -22,6 +27,12 @@ end)
 -- If cash provided: convert all cash to gold at buy rate.
 BccUtils.RPC:Register('Feather:Banks:BuyGold', function(params, cb, src)
     devPrint('BuyGold RPC called. src=', src, 'params=', params)
+
+    if not canUseGoldExchange(src) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
 
     local user = VORPcore.getUser(src)
     if not user then
@@ -43,7 +54,7 @@ BccUtils.RPC:Register('Feather:Banks:BuyGold', function(params, cb, src)
     local gold = tonumber(params and params.gold)
     local cash = tonumber(params and params.cash)
 
-    if (not gold or gold <= 0) and (not cash or cash <= 0) then
+    if (not IsFinitePositiveNumber(gold)) and (not IsFinitePositiveNumber(cash)) then
         NotifyClient(src, _U('error_invalid_gold_or_cash_amount'), 'error', 4000)
         cb(false)
         return
@@ -71,8 +82,20 @@ BccUtils.RPC:Register('Feather:Banks:BuyGold', function(params, cb, src)
         return
     end
 
-    char.removeCurrency(0, cost)
-    char.addCurrency(1, gold)
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local removed = pcall(function() char.removeCurrency(0, cost) end)
+    local credited = removed and pcall(function() char.addCurrency(1, gold) end)
+    if not credited then
+        if removed then pcall(function() char.addCurrency(0, cost) end) end
+        ReleasePlayerFinancialLock(src)
+        cb(false)
+        return
+    end
+    ReleasePlayerFinancialLock(src)
 
     NotifyClient(src, _U('success_purchased_gold_for_cash', tostring(gold), tostring(cost)), 'success', 4000)
     cb(true, { gold = gold, cost = cost })
@@ -83,6 +106,12 @@ end)
 -- If cash provided: sell enough gold to receive that much cash.
 BccUtils.RPC:Register('Feather:Banks:SellGold', function(params, cb, src)
     devPrint('SellGold RPC called. src=', src, 'params=', params)
+
+    if not canUseGoldExchange(src) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
 
     local user = VORPcore.getUser(src)
     if not user then
@@ -104,7 +133,7 @@ BccUtils.RPC:Register('Feather:Banks:SellGold', function(params, cb, src)
     local gold = tonumber(params and params.gold)
     local cash = tonumber(params and params.cash)
 
-    if (not gold or gold <= 0) and (not cash or cash <= 0) then
+    if (not IsFinitePositiveNumber(gold)) and (not IsFinitePositiveNumber(cash)) then
         NotifyClient(src, _U('error_invalid_gold_or_cash_amount'), 'error', 4000)
         cb(false)
         return
@@ -132,8 +161,20 @@ BccUtils.RPC:Register('Feather:Banks:SellGold', function(params, cb, src)
         return
     end
 
-    char.removeCurrency(1, gold)
-    char.addCurrency(0, proceeds)
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local removed = pcall(function() char.removeCurrency(1, gold) end)
+    local credited = removed and pcall(function() char.addCurrency(0, proceeds) end)
+    if not credited then
+        if removed then pcall(function() char.addCurrency(1, gold) end) end
+        ReleasePlayerFinancialLock(src)
+        cb(false)
+        return
+    end
+    ReleasePlayerFinancialLock(src)
 
     NotifyClient(src, _U('success_sold_gold_for_cash', tostring(gold), tostring(proceeds)), 'success', 4000)
     cb(true, { gold = gold, cash = proceeds })
@@ -143,6 +184,12 @@ end)
 -- params: { count = number }
 BccUtils.RPC:Register('Feather:Banks:ExchangeGoldBars', function(params, cb, src)
     devPrint('ExchangeGoldBars RPC called. src=', src, 'params=', params)
+
+    if not canUseGoldExchange(src) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
 
     local user = VORPcore.getUser(src)
     if not user or not user.getUsedCharacter then
@@ -154,7 +201,7 @@ BccUtils.RPC:Register('Feather:Banks:ExchangeGoldBars', function(params, cb, src
     local char = user.getUsedCharacter
 
     local count = tonumber(params and params.count) or 0
-    if count <= 0 then
+    if not IsFinitePositiveNumber(count) or count % 1 ~= 0 then
         NotifyClient(src, _U('error_invalid_goldbar_count'), 'error', 4000)
         cb(false)
         return
@@ -172,11 +219,28 @@ BccUtils.RPC:Register('Feather:Banks:ExchangeGoldBars', function(params, cb, src
         return
     end
 
-    Inv.subItem(src, itemName, count)
+    if not AcquirePlayerFinancialLock(src) then
+        NotifyClient(src, _U('error_financial_operation_busy'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local removed = pcall(function() Inv.subItem(src, itemName, count) end)
+    if not removed then
+        ReleasePlayerFinancialLock(src)
+        cb(false)
+        return
+    end
     local grossGold = perBarGold * count
     local netGold = roundTo(grossGold * (1 - (feePercent / 100)), 2)
     if netGold < 0 then netGold = 0 end
-    char.addCurrency(1, netGold)
+    local credited = pcall(function() char.addCurrency(1, netGold) end)
+    if not credited then
+        pcall(function() Inv.addItem(src, itemName, count) end)
+        ReleasePlayerFinancialLock(src)
+        cb(false)
+        return
+    end
+    ReleasePlayerFinancialLock(src)
 
     local function toFixed(n, decimals)
         n = tonumber(n) or 0

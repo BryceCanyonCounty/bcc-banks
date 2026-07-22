@@ -20,7 +20,7 @@ function GetCharacterName(charId)
 end
 
 function CreateCheck(accountId, issuerCharId, recipientCharId, amount, memo)
-    if not accountId or not issuerCharId or not recipientCharId or not amount or amount <= 0 then
+    if not accountId or not issuerCharId or not recipientCharId or not IsFinitePositiveNumber(amount) then
         return { status = false, message = 'Invalid check data.' }
     end
 
@@ -36,10 +36,14 @@ function CreateCheck(accountId, issuerCharId, recipientCharId, amount, memo)
     end
 
     local checkId = BccUtils.UUID()
-    MySQL.query.await(
+    local inserted = MySQL.insert.await(
         'INSERT INTO `bcc_checks` (`id`, `account_id`, `issuer_character_id`, `recipient_character_id`, `amount`, `memo`, `status`) VALUES (?, ?, ?, ?, ?, ?, "pending")',
-        { checkId, accountId, issuerCharId, recipientCharId, amount, memo or '' }
+        { checkId, accountId, issuerCharId, recipientCharId, amount, tostring(memo or ''):sub(1, 200) }
     )
+    if not inserted then
+        DepositCash(accountId, amount)
+        return { status = false, message = 'Failed to create check.' }
+    end
 
     AddAccountTransaction(
         accountId,
@@ -102,10 +106,13 @@ function CashCheck(checkId, characterId)
         return { status = false, message = 'not_yours' }
     end
 
-    MySQL.query.await(
-        'UPDATE `bcc_checks` SET `status` = "cashed", `cashed_at` = NOW() WHERE `id` = ?',
-        { checkId }
+    local changed = MySQL.update.await(
+        'UPDATE `bcc_checks` SET `status` = "cashed", `cashed_at` = NOW() WHERE `id` = ? AND `status` = "pending" AND `recipient_character_id` = ?',
+        { checkId, characterId }
     )
+    if (tonumber(changed) or 0) ~= 1 then
+        return { status = false, message = 'already_cashed' }
+    end
 
     return { status = true, amount = tonumber(check.amount), account_id = check.account_id }
 end
@@ -126,18 +133,24 @@ function VoidCheck(checkId, characterId)
         return { status = false, message = 'no_permission' }
     end
 
-    DepositCash(check.account_id, tonumber(check.amount))
+    local changed = MySQL.update.await(
+        'UPDATE `bcc_checks` SET `status` = "voided" WHERE `id` = ? AND `status` = "pending"',
+        { checkId }
+    )
+    if (tonumber(changed) or 0) ~= 1 then
+        return { status = false, message = 'Cannot void a check that is not pending.' }
+    end
+
+    if not DepositCash(check.account_id, tonumber(check.amount)) then
+        MySQL.update.await('UPDATE `bcc_checks` SET `status` = "pending" WHERE `id` = ? AND `status` = "voided"', { checkId })
+        return { status = false, message = 'Unable to refund check.' }
+    end
     AddAccountTransaction(
         check.account_id,
         tonumber(characterId),
         tonumber(check.amount),
         'check - voided',
         'Check voided, funds returned'
-    )
-
-    MySQL.query.await(
-        'UPDATE `bcc_checks` SET `status` = "voided" WHERE `id` = ?',
-        { checkId }
     )
 
     return { status = true }
