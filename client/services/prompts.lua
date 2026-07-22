@@ -17,14 +17,14 @@ end
 
 function BankOpen()
   if not OpenPrompt then
-    OpenPrompt = OpenGroup:RegisterPrompt('Menu', Config.PromptSettings.TellerKey, 1, 1, false, 'hold',
+    OpenPrompt = OpenGroup:RegisterPrompt(_U('menu_prompt'), Config.PromptSettings.TellerKey, 1, 1, false, 'hold',
       { timedeventhash = "SHORT_TIMED_EVENT" })
   end
 end
 
 function BankClosed()
   if not ClosedPrompt then
-    ClosedPrompt = ClosedGroup:RegisterPrompt('Menu', Config.PromptSettings.TellerKey, 0, 1, false, 'hold',
+    ClosedPrompt = ClosedGroup:RegisterPrompt(_U('menu_prompt'), Config.PromptSettings.TellerKey, 0, 1, false, 'hold',
       { timedeventhash = "SHORT_TIMED_EVENT" })
   end
 end
