@@ -225,5 +225,25 @@ CreateThread(function()
         (UUID(), 'SaintDenis', 2644.15, -1296.16, 52.25, 111.40, -2128054417, 0, 7, 21);
     ]])
 
+    -- Physical checks use a standard VORP inventory item. Seed it before the
+    -- usable-item handler is registered so fresh installations do not warn.
+    local checkItemReady = false
+    if Config.Checks and Config.Checks.Enabled == true and Config.Checks.UseItem == true then
+        local itemName = tostring(Config.Checks.ItemName or 'bank_check')
+        local seeded, seedError = pcall(function()
+            MySQL.insert.await([[
+                INSERT IGNORE INTO `items`
+                    (`item`, `label`, `limit`, `can_remove`, `type`, `usable`, `desc`)
+                VALUES (?, 'Bank Check', 10, 1, 'item_standard', 1, 'A bank check payable to its named recipient.')
+            ]], { itemName })
+        end)
+        if not seeded then
+            devPrint('Unable to seed the VORP bank check item:', tostring(seedError))
+        else
+            checkItemReady = true
+        end
+    end
+
     devPrint("Database tables for *bcc-banks* created successfully.")
+    TriggerEvent('Feather:Banks:DatabaseReady', checkItemReady)
 end)
