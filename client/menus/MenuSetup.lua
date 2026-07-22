@@ -2,6 +2,15 @@ local function getBankId(bank)
     return bank and NormalizeId(bank.id) or nil
 end
 
+local function escapeHtml(value)
+    local text = tostring(value or '')
+    return text:gsub('&', '&amp;')
+        :gsub('<', '&lt;')
+        :gsub('>', '&gt;')
+        :gsub('"', '&quot;')
+        :gsub("'", '&#39;')
+end
+
 local function formatAmount(value)
     value = tonumber(value) or 0
     local rounded = math.floor(value * 100 + 0.5) / 100
@@ -48,10 +57,10 @@ local function OpenLoanTransactionsPage(loanIdStr, parentPage)
                 <tbody>
         ]]
         for _, row in ipairs(txRows) do
-            local dateStr = row.created_at_display or row.created_at or '-'
-            local typeStr = row.type or ''
-            local descStr = row.description or ''
-            local amountStr = row.amount_formatted or formatAmount(row.amount)
+            local dateStr = escapeHtml(row.created_at_display or row.created_at or '-')
+            local typeStr = escapeHtml(row.type or '')
+            local descStr = escapeHtml(row.description or '')
+            local amountStr = escapeHtml(row.amount_formatted or formatAmount(row.amount))
             txHtml = txHtml .. [[
                     <tr style="border-bottom:1px solid #dee2e6;">
                         <td style="padding:6px 4px;">]] .. dateStr .. [[</td>
@@ -101,7 +110,8 @@ function OpenUI(bank)
     end
 
     if Config.UseBankerBusy then
-        if BccUtils.RPC:CallAsync('Feather:Banks:GetBankerBusy', { bank = bankId }) then
+        local ok, acquired = BccUtils.RPC:CallAsync('Feather:Banks:SetBankerBusy', { bank = bankId, state = true })
+        if not ok or not acquired then
             Notify(_U("banker_busy_notify"), 4000)
             return
         end
@@ -167,9 +177,6 @@ function OpenUI(bank)
         style = {}
     })
     FeatherBankMenu:Open({ startupPage = MainPage })
-    if Config.UseBankerBusy then
-        BccUtils.RPC:CallAsync('Feather:Banks:SetBankerBusy', { bank = bankId, state = true })
-    end
 end
 
 function OpenTransactionsPage(acc, ParentPage)
@@ -233,12 +240,12 @@ function OpenTransactionsPage(acc, ParentPage)
         ]]
         for i = 1, #data do
             local t = data[i]
-            local id = tostring(t.id or "")
-            local when = tostring(t.created_at or "")
-            local by = t.character_name or "-"
-            local typ = t.type or ""
-            local amount = tostring(t.amount or "")
-            local desc = t.description or ""
+            local id = escapeHtml(t.id or "")
+            local when = escapeHtml(t.created_at or "")
+            local by = escapeHtml(t.character_name or "-")
+            local typ = escapeHtml(t.type or "")
+            local amount = escapeHtml(t.amount or "")
+            local desc = escapeHtml(t.description or "")
             local badge = "<span style='display:inline-block; padding:2px 6px; border-radius:12px; background:" .. badgeColor(typ) .. "; color:#fff;'>" .. typ .. "</span>"
             html = html ..
                 "<tr style='border-bottom:1px solid #dee2e6;'>" ..
