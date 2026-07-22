@@ -50,19 +50,19 @@ function OpenAdminBankSelectMenu()
     banks = banks or {}
     if not ok or #banks == 0 then
         Page:RegisterElement("textdisplay", {
-            value = "No banks found.",
+            value = _U("admin_no_banks_found"),
             slot  = "content"
         })
     end
 
     -- Always allow creating a bank from here
     Page:RegisterElement("button", {
-        label = "Create Bank At Your Location",
+        label = _U("admin_create_bank_here"),
         style = {}
     }, function()
         local CreatePage = FeatherBankMenu:RegisterPage("bank:page:admin:banks:create")
         CreatePage:RegisterElement("header", {
-            value = "Create Bank",
+            value = _U("admin_create_bank_header"),
             slot  = "header"
         })
         CreatePage:RegisterElement("line", {
@@ -71,8 +71,8 @@ function OpenAdminBankSelectMenu()
         })
         local nameValue = ""
         CreatePage:RegisterElement("input", {
-            label       = "Bank Name",
-            placeholder = "Enter bank name",
+            label       = _U("admin_bank_name_label"),
+            placeholder = _U("admin_bank_name_placeholder"),
             style       = {}
         }, function(data)
             nameValue = data.value
@@ -235,7 +235,7 @@ function OpenAdminHoursMenu(Parent, bank)
         end)
     else
         Page:RegisterElement('textdisplay', {
-            value = 'Bank: ' .. tostring(bank.name),
+        value = _U('bank_label') .. ': ' .. tostring(bank.name),
             slot = 'content'
         })
     end
@@ -352,7 +352,7 @@ function OpenAdminRatesMenu(Parent, bank)
         end)
     else
         AdminRatesPage:RegisterElement('textdisplay', {
-            value = 'Bank: ' .. tostring(bank.name),
+        value = _U('bank_label') .. ': ' .. tostring(bank.name),
             slot = 'content'
         })
     end
@@ -782,7 +782,7 @@ function OpenAdminAccountsMenu(Parent, bank)
         end)
     else
         AdminAccountsPage:RegisterElement('textdisplay', {
-            value = 'Bank: ' .. tostring(bank.name),
+        value = _U('bank_label') .. ': ' .. tostring(bank.name),
             slot = 'content'
         })
     end
@@ -906,7 +906,7 @@ function OpenAdminLockedAccountsMenu(Parent, bank)
         end)
     else
         LockedAccountsPage:RegisterElement('textdisplay', {
-            value = 'Bank: ' .. tostring(bank.name),
+        value = _U('bank_label') .. ': ' .. tostring(bank.name),
             slot  = 'content'
         })
     end
@@ -1215,7 +1215,7 @@ function OpenAdminSDBsMenu(Parent, bank)
         end)
     else
         AdminSDBsPage:RegisterElement('textdisplay', {
-            value = 'Bank: ' .. tostring(bank.name),
+        value = _U('bank_label') .. ': ' .. tostring(bank.name),
             slot = 'content'
         })
     end
