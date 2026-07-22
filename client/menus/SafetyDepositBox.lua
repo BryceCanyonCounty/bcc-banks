@@ -192,10 +192,12 @@ function OpenCreateSDBPage(bank, ParentPage, selectedPayWith)
         Notify(_U("size_selected_notify", _U("size_large_button")), 2000)
     end)
     CreateSDBPage:RegisterElement('line', {
+        slot  = 'footer',
         style = {}
     })
     CreateSDBPage:RegisterElement('button', {
         label = _U("create_box_button"),
+        slot  = 'footer',
         style = {}
     }, function()
         if not sdbName or sdbName == '' then
@@ -216,10 +218,6 @@ function OpenCreateSDBPage(bank, ParentPage, selectedPayWith)
         Notify(_U("box_created_notify", sdbName), 3000)
         OpenSDBListPage(bank, ParentPage)
     end)
-    CreateSDBPage:RegisterElement('line', {
-        slot  = 'footer',
-        style = {}
-    })
     CreateSDBPage:RegisterElement('button', {
         label = _U("back_button"),
         slot  = 'footer',
