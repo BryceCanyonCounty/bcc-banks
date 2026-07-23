@@ -118,8 +118,7 @@ RegisterNetEvent('Feather:Banks:Start', function()
                 end
 
                 if bank.npc then
-                    bank.npc:Remove()
-                    bank.npc = nil
+                    RemoveNPC(bank)
                     devPrint("DEBUG: Removed NPC for closed bank", bank.name)
                 end
             end
@@ -165,8 +164,7 @@ RegisterNetEvent('Feather:Banks:Start', function()
             if Config.NPCSettings.Show then
                 if bank.isClosed then
                     if bank.npc then
-                        bank.npc:Remove()
-                        bank.npc = nil
+                        RemoveNPC(bank)
                         devPrint("DEBUG: Ensured NPC removed for closed bank", bank.name)
                     end
                 else
@@ -181,8 +179,7 @@ RegisterNetEvent('Feather:Banks:Start', function()
                         end
                     else
                         if bank.npc then
-                            bank.npc:Remove()
-                            bank.npc = nil
+                            RemoveNPC(bank)
                             --print("DEBUG: Removed NPC for bank " .. bank.name)
                         end
                     end
