@@ -1,4 +1,5 @@
 <1.5.2>
+- Fixed: resource restarts could leave an orphaned teller and spawn a duplicate NPC
 - Thanks to ImHerHela for bringing the loan issues to  our attention
 - Fixed: loan applications now upgrade older loan schemas with every required column
 - Fixed: bank and character interest-rate lookup safely falls back to the default rate
