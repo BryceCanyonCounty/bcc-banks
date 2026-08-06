@@ -43,13 +43,25 @@ RegisterNetEvent('feather-banks:lockpick:onSuccess', function(doorHash)
   if Config.Doors[doorHash] == nil or not IsPlayerNearBank(src, nil, 25.0, false) then return end
   if not hasLockpickItem(src) then return end
 
-  TriggerClientEvent('feather-banks:lockpick:setDoorState', -1, doorHash, 0, src)
+  TriggerClientEvent('feather-banks:lockpick:setDoorState', -1, doorHash, 0, src, 'lockpick')
   local relock = tonumber(Config.LockPicking.RelockSeconds or 0) or 0
   if relock > 0 then
     SetTimeout(relock * 1000, function()
-      TriggerClientEvent('feather-banks:lockpick:setDoorState', -1, doorHash, 1, 0)
+      TriggerClientEvent('feather-banks:lockpick:setDoorState', -1, doorHash, 1, 0, 'relock')
     end)
   end
+end)
+
+RegisterNetEvent('feather-banks:lockpick:bypassSetDoorState', function(doorHash, state)
+  local src = source
+  doorHash = tonumber(doorHash)
+  state = tonumber(state)
+  if not doorHash or (state ~= 0 and state ~= 1) then return end
+  if not Config.LockPicking or Config.LockPicking.Enabled ~= true or Config.LockPicking.AdminBypass == false then return end
+  if Config.Doors[doorHash] == nil or not IsPlayerNearBank(src, nil, 25.0, false) then return end
+  if not IsBankAdmin(src) then return end
+
+  TriggerClientEvent('feather-banks:lockpick:setDoorState', -1, doorHash, state, src, 'bypass')
 end)
 
 AddEventHandler('playerDropped', function()

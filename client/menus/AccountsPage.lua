@@ -130,10 +130,8 @@ function OpenAccountDetails(account, AccountPage)
 
     local html = [[
         <div style="padding:30px; text-align:left;">
-            <div><b>]] .. _U("account_id_label") .. [[</b> ]] .. acc.id .. [[</div>
             <div><b>]] .. _U("account_number_label") .. [[</b> ]] .. acc.account_number .. [[</div>
             <div><b>]] .. _U("account_name_label") .. [[</b> ]] .. acc.name .. [[</div>
-            <div><b>]] .. _U("bank_id_label") .. [[</b> ]] .. acc.bank_id .. [[</div>
         </div>
     ]]
 

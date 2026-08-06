@@ -3,6 +3,9 @@ Config = {
 	defaultlang        = 'en_lang',
 	Notify             = "feather-menu", ----or use feather-core
 	UseBankerBusy      = true,        -- If enabled only 1 person can use the bank at a time
+	WebhookLink        = '',
+	WebhookTitle       = 'BCC-Banks',
+	WebhookAvatar      = '',
 
     -- Admin configuration: choose how admin is determined
     Admin = {
@@ -224,6 +227,8 @@ Config = {
 		Resource = 'lockpick',       -- Minigame resource at `resources/[OTHER]/lockpick`
 		Attempts = 3,               -- How many attempts the minigame provides
 		PromptKey = 0xCEFD9220,     -- Default: Key "E" (same as bcc-doorlocks)
+		LockPromptKey = 0xCEFD9220, -- Default: Key "E" for admins/bankers to lock an opened door
+		AdminBypass = true,         -- If true, admins/bankers can open/lock doors; others must use lockpicks
 		Radius = 1.6,               -- Distance to door center to show prompt
 		RequireLineOfSight = true,  -- Prevent interaction with doors through walls
 		DoorSearchRadius = 1.0,     -- Radius used to resolve the door's physical map object

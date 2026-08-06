@@ -1,5 +1,11 @@
 Locales["it_lang"] = {
     bank_label = "Banca",
+    door_prompt_group = "Porta",
+    door_open_prompt = "Apri porta",
+    door_lockpick_prompt = "Scassina serratura",
+    door_lock_prompt = "Chiudi porta",
+    door_unlocked = "Porta aperta",
+    door_locked = "Porta chiusa",
     -- Closed prompt wording (match stables/guarma style)
     hours = " è aperta dalle ~o~",
     to = ":00~q~ alle ~o~",
@@ -109,6 +115,7 @@ Locales["it_lang"] = {
     sdb_box_subheader = "La tua cassetta in questa banca",
     open_box_button = "Apri cassetta",
     manage_access_button = "Gestisci accesso",
+    delete_sdb_button = "Elimina cassetta",
 
     -- OpenCreateSDBPage
     create_sdb_header = "Crea cassetta di sicurezza",
@@ -135,6 +142,8 @@ Locales["it_lang"] = {
 
     -- OpenSDBGiveAccessPage
     grant_sdb_access_header = "Concedi accesso cassetta",
+    grant_sdb_access_help_identity = "Usa ID personaggio o nome + cognome.",
+    grant_sdb_access_help_levels = "Livelli: 1 Admin, 2 Prendi/Metti, 3 Metti, 4 Vedi.",
     invalid_char_id_level = "Inserisci nome e livello di accesso validi.",
     failed_grant_access = "Impossibile concedere accesso.",
     access_granted = "Accesso concesso.",
@@ -149,6 +158,12 @@ Locales["it_lang"] = {
     cancel_button = "Annulla",
     access_removed = "Accesso rimosso.",
     failed_remove_access = "Impossibile rimuovere l'accesso.",
+    confirm_delete_sdb_header = "Elimina cassetta",
+    confirm_delete_sdb_text = "Eliminare %s e il suo inventario? Non si puo annullare.",
+    confirm_delete_sdb_text_with_items = "%s contiene oggetti. Vuoi davvero eliminarla e cancellare il suo inventario? Non si puo annullare.",
+    confirm_delete_sdb_button = "Si, elimina cassetta",
+    sdb_deleted_notify = "Cassetta eliminata.",
+    failed_delete_sdb = "Impossibile eliminare la cassetta.",
 
     -- OpenAccountDetails
     load_account_error = "Impossibile caricare il conto.",
@@ -495,8 +510,8 @@ Locales["it_lang"] = {
     admin_bank_name_label = "Nome della banca",
     admin_bank_name_placeholder = "Inserisci il nome della banca",
     sdb_select_payment = "Seleziona pagamento:",
-    sdb_pay_cash = "Paga in contanti",
-    sdb_pay_gold = "Paga in oro",
+    sdb_pay_cash = "Contanti",
+    sdb_pay_gold = "Oro",
     sdb_payment_cash_selected = "Pagamento in contanti selezionato",
     sdb_payment_gold_selected = "Pagamento in oro selezionato",
     menu_prompt = "Menu",

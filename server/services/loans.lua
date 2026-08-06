@@ -255,6 +255,16 @@ BccUtils.RPC:Register('Feather:Banks:ClaimLoanDisbursement', function(params, cb
         return
     end
     NotifyClient(src, _U('success_loan_disbursed') or 'Loan funds transferred to account.', 'success', 4000)
+    local loan = res.loan or {}
+    local lines = {
+        '**Action:** `Loan Disbursement Claimed`',
+        '**Loan ID:** `' .. tostring(loan.id or loan_id) .. '`',
+        '**Account ID:** `' .. tostring(account_id) .. '`',
+        '**Amount:** `$' .. tostring(loan.amount or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(loan.bank_id or GetBankIdForAccount(account_id))) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Loan Disbursement Claimed', lines, 5763719)
     cb(true, res.loan)
 end)
 
@@ -342,6 +352,20 @@ BccUtils.RPC:Register('Feather:Banks:CreateLoan', function(params, cb, src)
 
     -- Inform user that the loan application is pending approval
     NotifyClient(src, _U('success_loan_created') or 'Loan application submitted for approval.', 'success', 4000)
+    local loan = res.loan or {}
+    local lines = {
+        '**Action:** `Loan Created`',
+        '**Loan ID:** `' .. tostring(loan.id or 'Pending') .. '`',
+        '**Account ID:** `' .. tostring(account_id or 'None') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(bankId)) .. '`',
+        '**Amount:** `$' .. tostring(amount) .. '`',
+        '**Interest:** `' .. tostring(interest) .. '%`',
+        '**Duration:** `' .. tostring(duration) .. ' days`',
+        '**Status:** `' .. tostring(loan.status or 'pending') .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Loan Application Created', lines, 3447003)
+    AddLoanTransaction(loan.id, characterId, amount, 'loan - application', 'Loan application submitted')
     cb(true, res.loan)
 end)
 
@@ -546,15 +570,7 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
 
     -- Record the repayment against the loan
     local repayDesc = _U and _U('loan_repayment_cash_desc') or 'Loan repayment from character cash'
-    local logged = pcall(AddLoanTransaction, loan_id, characterId, amount, 'loan - repayment', repayDesc)
-    if not logged then
-        pcall(function() char.addCurrency(0, amount) end)
-        ReleasePlayerFinancialLock(src)
-        ActiveLoanRepayments[loan_id] = nil
-        NotifyClient(src, _U('error_unable_repay_loan'), 'error', 4000)
-        cb(false)
-        return
-    end
+    AddLoanTransaction(loan_id, characterId, amount, 'loan - repayment', repayDesc)
 
     -- If fully repaid now, mark loan as paid
     local after = ComputeLoanOutstanding(loan_id)
@@ -572,6 +588,16 @@ BccUtils.RPC:Register('Feather:Banks:RepayLoan', function(params, cb, src)
     end
 
     NotifyClient(src, _U('success_loan_repaid'), 'success', 4000)
+    local remaining = after and after.outstanding or nil
+    local lines = {
+        '**Action:** `Loan Repaid`',
+        '**Loan ID:** `' .. tostring(loan_id) .. '`',
+        '**Amount Paid:** `$' .. tostring(amount) .. '`',
+        '**Remaining Balance:** `$' .. tostring(remaining or 'Unknown') .. '`',
+        '**Status:** `' .. tostring((remaining and remaining <= 0) and 'paid' or 'active') .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Loan Repayment', lines, 3066993)
     ReleasePlayerFinancialLock(src)
     ActiveLoanRepayments[loan_id] = nil
     cb(true)

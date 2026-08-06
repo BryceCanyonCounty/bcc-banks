@@ -1,5 +1,11 @@
 Locales["de_lang"] = {
     bank_label = "Bank",
+    door_prompt_group = "Tuer",
+    door_open_prompt = "Tuer oeffnen",
+    door_lockpick_prompt = "Schloss knacken",
+    door_lock_prompt = "Tuer abschliessen",
+    door_unlocked = "Tuer geoeffnet",
+    door_locked = "Tuer abgeschlossen",
     -- Closed prompt wording (match stables/guarma style)
     hours = " ist geöffnet von ~o~",
     to = ":00~q~ bis ~o~",
@@ -109,6 +115,7 @@ Locales["de_lang"] = {
     sdb_box_subheader = "Ihr Schließfach in dieser Bank",
     open_box_button = "Schließfach öffnen",
     manage_access_button = "Zugang verwalten",
+    delete_sdb_button = "Schließfach löschen",
 
     -- OpenCreateSDBPage
     create_sdb_header = "Schließfach erstellen",
@@ -135,6 +142,8 @@ Locales["de_lang"] = {
 
     -- OpenSDBGiveAccessPage
     grant_sdb_access_header = "Schließfach-Zugang gewähren",
+    grant_sdb_access_help_identity = "Charakter-ID oder Vorname + Nachname nutzen.",
+    grant_sdb_access_help_levels = "Stufen: 1 Admin, 2 Nehmen/Geben, 3 Geben, 4 Sehen.",
     invalid_char_id_level = "Gültigen Namen und Zugangsstufe eingeben.",
     failed_grant_access = "Zugang konnte nicht gewährt werden.",
     access_granted = "Zugang gewährt.",
@@ -149,6 +158,12 @@ Locales["de_lang"] = {
     cancel_button = "Abbrechen",
     access_removed = "Zugang entfernt.",
     failed_remove_access = "Zugang konnte nicht entfernt werden.",
+    confirm_delete_sdb_header = "Schließfach löschen",
+    confirm_delete_sdb_text = "%s und sein Inventar löschen? Dies kann nicht rückgängig gemacht werden.",
+    confirm_delete_sdb_text_with_items = "%s enthält Gegenstände. Sicher löschen und das Inventar entfernen? Dies kann nicht rückgängig gemacht werden.",
+    confirm_delete_sdb_button = "Ja, Schließfach löschen",
+    sdb_deleted_notify = "Schließfach gelöscht.",
+    failed_delete_sdb = "Schließfach konnte nicht gelöscht werden.",
 
     -- OpenAccountDetails
     load_account_error = "Konto konnte nicht geladen werden.",
@@ -495,8 +510,8 @@ Locales["de_lang"] = {
     admin_bank_name_label = "Bankname",
     admin_bank_name_placeholder = "Banknamen eingeben",
     sdb_select_payment = "Zahlungsart auswählen:",
-    sdb_pay_cash = "Mit Bargeld bezahlen",
-    sdb_pay_gold = "Mit Gold bezahlen",
+    sdb_pay_cash = "Bargeld",
+    sdb_pay_gold = "Gold",
     sdb_payment_cash_selected = "Bargeld als Zahlungsart ausgewählt",
     sdb_payment_gold_selected = "Gold als Zahlungsart ausgewählt",
     menu_prompt = "Menü",

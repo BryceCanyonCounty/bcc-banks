@@ -19,7 +19,7 @@ function IsSDBAdmin(sdbId, character)
     )[1]
     if not row then return false end
     local lvl = tonumber(row.level)
-    return lvl == (Config.AccessLevels and Config.AccessLevels.Admin or 1)
+    return lvl and lvl <= (Config.AccessLevels and Config.AccessLevels.Admin or 1)
 end
 
 function HasSDBAccess(sdbId, character)
@@ -55,6 +55,7 @@ function GetUserSDBData(character, bank)
             'sdb.id, ' ..
             'sdb.name, ' ..
             'sdb.owner_id, ' ..
+            'sdb.bank_id, ' ..
             'sdb.inventory_id, ' ..
             'acc.level ' ..
             'FROM bcc_safety_deposit_boxes AS sdb ' ..
@@ -150,7 +151,7 @@ function IsSDBAdmin(sdbId, character)
     )[1]
     if not row then return false end
     local lvl = tonumber(row.level)
-    return lvl == (Config.AccessLevels and Config.AccessLevels.Admin or 1)
+    return lvl and lvl <= (Config.AccessLevels and Config.AccessLevels.Admin or 1)
 end
 
 function HasSDBAccess(sdbId, character)

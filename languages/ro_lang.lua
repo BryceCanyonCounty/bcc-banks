@@ -1,5 +1,11 @@
 Locales["ro_lang"] = {
     bank_label = "Banca",
+    door_prompt_group = "Usa",
+    door_open_prompt = "Deschide usa",
+    door_lockpick_prompt = "Sparge incuietoarea",
+    door_lock_prompt = "Incuie usa",
+    door_unlocked = "Usa descuiata",
+    door_locked = "Usa incuiata",
     -- Closed prompt wording (match stables/guarma style)
     hours = " este deschisa de la ~o~",
     to = ":00~q~ pana la ~o~",
@@ -109,6 +115,7 @@ Locales["ro_lang"] = {
     sdb_box_subheader = "Seiful tau la aceasta banca",
     open_box_button = "Deschide seiful",
     manage_access_button = "Gestioneaza accesul",
+    delete_sdb_button = "Sterge seiful",
 
     -- OpenCreateSDBPage
     create_sdb_header = "Creeaza seif",
@@ -135,6 +142,8 @@ Locales["ro_lang"] = {
 
     -- OpenSDBGiveAccessPage
     grant_sdb_access_header = "Acorda acces la seif",
+    grant_sdb_access_help_identity = "Foloseste ID caracter sau prenume + nume.",
+    grant_sdb_access_help_levels = "Niveluri: 1 admin, 2 ia/pune, 3 pune, 4 vede.",
     invalid_char_id_level = "Introdu un ID de caracter si un nivel de acces valide.",
     failed_grant_access = "Nu s-a putut acorda accesul.",
     access_granted = "Acces acordat.",
@@ -149,6 +158,12 @@ Locales["ro_lang"] = {
     cancel_button = "Anuleaza",
     access_removed = "Acces revocat.",
     failed_remove_access = "Nu s-a putut revoca accesul.",
+    confirm_delete_sdb_header = "Sterge seiful",
+    confirm_delete_sdb_text = "Stergi %s si inventarul lui? Actiunea nu poate fi anulata.",
+    confirm_delete_sdb_text_with_items = "%s are iteme in inventar. Sigur vrei sa il stergi si sa stergi inventarul? Actiunea nu poate fi anulata.",
+    confirm_delete_sdb_button = "Da, sterge seiful",
+    sdb_deleted_notify = "Seiful a fost sters.",
+    failed_delete_sdb = "Nu s-a putut sterge seiful.",
 
     -- OpenAccountDetails
     load_account_error = "Nu s-a putut incarca contul.",
@@ -495,8 +510,8 @@ Locales["ro_lang"] = {
     admin_bank_name_label = "Numele băncii",
     admin_bank_name_placeholder = "Introdu numele băncii",
     sdb_select_payment = "Selectează plata:",
-    sdb_pay_cash = "Plătește cu numerar",
-    sdb_pay_gold = "Plătește cu aur",
+    sdb_pay_cash = "Numerar",
+    sdb_pay_gold = "Aur",
     sdb_payment_cash_selected = "A fost selectată plata cu numerar",
     sdb_payment_gold_selected = "A fost selectată plata cu aur",
     menu_prompt = "Meniu",

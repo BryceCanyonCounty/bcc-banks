@@ -97,6 +97,15 @@ BccUtils.RPC:Register('Feather:Banks:BuyGold', function(params, cb, src)
     end
     ReleasePlayerFinancialLock(src)
 
+    local lines = {
+        '**Action:** `Buy Gold`',
+        '**Gold Received:** `' .. tostring(gold) .. '`',
+        '**Cash Spent:** `$' .. tostring(cost) .. '`',
+        '**Rate:** `$' .. tostring(buyRate) .. ' / gold`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Gold Exchange Purchase', lines, 15844367)
+    AddCharacterTransaction(char.charIdentifier, cost, 'gold exchange - buy', 'Bought ' .. tostring(gold) .. ' gold for $' .. tostring(cost))
     NotifyClient(src, _U('success_purchased_gold_for_cash', tostring(gold), tostring(cost)), 'success', 4000)
     cb(true, { gold = gold, cost = cost })
 end)
@@ -176,6 +185,15 @@ BccUtils.RPC:Register('Feather:Banks:SellGold', function(params, cb, src)
     end
     ReleasePlayerFinancialLock(src)
 
+    local lines = {
+        '**Action:** `Sell Gold`',
+        '**Gold Sold:** `' .. tostring(gold) .. '`',
+        '**Cash Received:** `$' .. tostring(proceeds) .. '`',
+        '**Rate:** `$' .. tostring(sellRate) .. ' / gold`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Gold Exchange Sale', lines, 15105570)
+    AddCharacterTransaction(char.charIdentifier, proceeds, 'gold exchange - sell', 'Sold ' .. tostring(gold) .. ' gold for $' .. tostring(proceeds))
     NotifyClient(src, _U('success_sold_gold_for_cash', tostring(gold), tostring(proceeds)), 'success', 4000)
     cb(true, { gold = gold, cash = proceeds })
 end)
@@ -261,5 +279,15 @@ BccUtils.RPC:Register('Feather:Banks:ExchangeGoldBars', function(params, cb, src
         return s
     end
     NotifyClient(src, _U('success_exchanged_goldbars', tostring(count), toFixed(netGold, 2)), 'success', 4000)
+    local lines = {
+        '**Action:** `Exchange Gold Bars`',
+        '**Item:** `' .. tostring(itemName) .. '`',
+        '**Count:** `' .. tostring(count) .. '`',
+        '**Gold Received:** `' .. tostring(toFixed(netGold, 2)) .. '`',
+        '**Fee Percent:** `' .. tostring(feePercent) .. '%`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Gold Bar Exchange', lines, 15844367)
+    AddCharacterTransaction(char.charIdentifier, netGold, 'gold exchange - bars', 'Exchanged ' .. tostring(count) .. ' ' .. tostring(itemName) .. ' for ' .. tostring(toFixed(netGold, 2)) .. ' gold')
     cb(true, { gold = netGold, fee = feePercent })
 end)
