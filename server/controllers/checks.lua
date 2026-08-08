@@ -129,6 +129,23 @@ BccUtils.RPC:Register('Feather:Banks:WriteCheck', function(params, cb, src)
     end
 
     NotifyClient(src, _U('check_written_notify', tostring(amount)), 'success', 4000)
+    local accountRow = BccBanksInternal.getAccountSummary(accountId)
+    local lines = {
+        '**Action:** `Check Written`',
+        '**Check ID:** `' .. tostring(result.check_id) .. '`',
+        '**Account ID:** `' .. tostring(accountId) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `$' .. tostring(amount) .. '`',
+        '**Recipient:** `' .. tostring(firstName .. ' ' .. lastName) .. '`',
+        '**Recipient Char ID:** `' .. tostring(recipientCharId) .. '`',
+        '**Mode:** `' .. tostring(useItem() and 'item' or 'db') .. '`',
+    }
+    if memo and memo ~= '' then
+        lines[#lines + 1] = '**Memo:** `' .. tostring(memo:sub(1, 200)) .. '`'
+    end
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Check Written', lines, 3447003)
     cb(true)
 end)
 
@@ -268,9 +285,25 @@ BccUtils.RPC:Register('Feather:Banks:CashCheck', function(params, cb, src)
 
     -- Remove the physical item after a successful cash
     if useItem() and foundItemId then removeCheckItem(src, foundItemId) end
+    AddAccountTransaction(result.account_id or (check and check.account_id), charId, result.amount, 'check - cashed', 'Check cashed by character #' .. tostring(charId))
     ReleasePlayerFinancialLock(src)
 
     NotifyClient(src, _U('check_cashed_notify', tostring(result.amount)), 'success', 4000)
+    local issuerFirst, issuerLast = GetCharacterName(check.issuer_character_id)
+    local accountRow = BccBanksInternal.getAccountSummary(check.account_id)
+    local lines = {
+        '**Action:** `Check Cashed`',
+        '**Check ID:** `' .. tostring(checkId) .. '`',
+        '**Account ID:** `' .. tostring(check.account_id) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `$' .. tostring(result.amount) .. '`',
+        '**Issuer:** `' .. tostring(((issuerFirst or '?') .. ' ' .. (issuerLast or '?')):gsub('%s+', ' ')) .. '`',
+        '**Issuer Char ID:** `' .. tostring(check.issuer_character_id) .. '`',
+        '**Mode:** `' .. tostring(useItem() and 'item' or 'db') .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Check Cashed', lines, 3066993)
     cb(true, { amount = result.amount })
 end)
 
@@ -307,6 +340,21 @@ BccUtils.RPC:Register('Feather:Banks:VoidCheck', function(params, cb, src)
     end
 
     NotifyClient(src, _U('check_voided_notify'), 'success', 4000)
+    local check = GetCheck(checkId)
+    local accountRow = check and BccBanksInternal.getAccountSummary(check.account_id) or nil
+    local recipientName = check and BccBanksInternal.getCharacterNameById(check.recipient_character_id) or 'Unknown'
+    local lines = {
+        '**Action:** `Check Voided`',
+        '**Check ID:** `' .. tostring(checkId) .. '`',
+        '**Account ID:** `' .. tostring(check and check.account_id or 'Unknown') .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount Refunded:** `$' .. tostring(check and check.amount or 'Unknown') .. '`',
+        '**Recipient:** `' .. tostring(recipientName) .. '`',
+        '**Recipient Char ID:** `' .. tostring(check and check.recipient_character_id or 'Unknown') .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Check Voided', lines, 15158332)
     cb(true)
 end)
 
@@ -392,6 +440,26 @@ if checkItemReady and Config.Checks and Config.Checks.Enabled == true and useIte
     end)
     ReleasePlayerFinancialLock(src)
     NotifyClient(src, _U('check_cashed_notify', tostring(result.amount)), 'success', 4000)
+    local check = GetCheck(checkId)
+    AddAccountTransaction(result.account_id or (check and check.account_id), charId, result.amount, 'check - cashed', 'Check cashed by character #' .. tostring(charId))
+    local issuerFirst, issuerLast = nil, nil
+    if check then
+        issuerFirst, issuerLast = GetCharacterName(check.issuer_character_id)
+    end
+    local accountRow = check and BccBanksInternal.getAccountSummary(check.account_id) or nil
+    local lines = {
+        '**Action:** `Check Cashed`',
+        '**Check ID:** `' .. tostring(checkId) .. '`',
+        '**Account ID:** `' .. tostring(check and check.account_id or 'Unknown') .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `$' .. tostring(result.amount) .. '`',
+        '**Issuer:** `' .. tostring((((issuerFirst or '?') .. ' ' .. (issuerLast or '?'))):gsub('%s+', ' ')) .. '`',
+        '**Issuer Char ID:** `' .. tostring(check and check.issuer_character_id or 'Unknown') .. '`',
+        '**Mode:** `item`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Check Cashed', lines, 3066993)
     end, GetCurrentResourceName())
 end
 end)

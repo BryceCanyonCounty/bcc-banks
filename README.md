@@ -8,7 +8,7 @@ Works out of the box: tables are auto‑created on first run, UI is powered by f
 
 - Accounts: multiple accounts per bank, close with zero balance, share access by level (Admin, Withdraw/Deposit, Deposit, Read‑only), server-side locking while viewing, full transaction history. Grant/revoke access by character first and last name.
 - Transfers: send between accounts (same or other banks) with configurable cross‑bank fee; logs both sides and the fee.
-- Safety Deposit Boxes (SDB): create boxes in sizes (Small/Medium/Large), pay in cash or gold, per‑size weight limits and blacklist, shared custom inventories via vorp_inventory, grant/revoke access by character name.
+- Safety Deposit Boxes (SDB): create boxes in sizes (Small/Medium/Large), pay in cash or gold, per‑size weight limits and blacklist, shared custom inventories via vorp_inventory, grant/revoke access by character name or player ID.
 - Gold Exchange: buy/sell gold currency for cash at config rates; redeem inventory gold bars to gold with a configurable fee.
 - Loans: apply with or without an account, per‑bank/per‑character interest rates, admin approve/reject, disburse to account or claim later, repayments, overdue/default tracking using in‑game days, freeze all owner accounts on default. Loan status mail sent on approve/reject via the configured mail script.
 - Checks: write checks from any account to a named recipient (first + last name lookup). Funds deduct immediately — no bounced checks. Two modes: DB-only (recipient cashes via bank menu) or physical item mode (issuer receives a `bank_check` inventory item to hand over in RP; recipient double-clicks it at a bank to cash). Issued checks can be voided by the issuer, refunding the account.

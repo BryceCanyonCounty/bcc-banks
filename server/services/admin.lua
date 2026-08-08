@@ -772,6 +772,18 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ApproveLoan', function(params, cb, sr
     local res = ApproveLoan(loanId, approver)
     if res and res.status then
         sendLoanStatusMail(res.loan, 'approved')
+        local approverName = BccBanksInternal.getCharacterNameById(approver)
+        local lines = {
+            '**Action:** `Loan Approved`',
+            '**Loan ID:** `' .. tostring(loanId) .. '`',
+            '**Bank:** `' .. tostring(BccBanksInternal.getBankName(res.loan and res.loan.bank_id)) .. '`',
+            '**Borrower:** `' .. tostring(BccBanksInternal.getCharacterNameById(res.loan and res.loan.character_id)) .. '`',
+            '**Borrower Char ID:** `' .. tostring(res.loan and res.loan.character_id or 'Unknown') .. '`',
+            '**Amount:** `$' .. tostring(res.loan and res.loan.amount or 'Unknown') .. '`',
+            '**Approved By:** `' .. tostring(approverName) .. ' (' .. tostring(approver) .. ')`',
+        }
+        SendBankDiscordLog('Bank Loan Approved', lines, 3066993)
+        AddLoanTransaction(loanId, res.loan and res.loan.character_id, tonumber(res.loan and res.loan.amount) or 0, 'loan - approved', 'Loan approved by character #' .. tostring(approver))
         NotifyClient(src, _U('admin_loan_approved') or 'Loan approved and disbursed.', 'success', 3000)
         cb(true)
     else
@@ -804,6 +816,18 @@ BccUtils.RPC:Register('Feather:Banks:Admin:RejectLoan', function(params, cb, src
     local res = RejectLoan(loanId, approver)
     if res and res.status then
         sendLoanStatusMail(res.loan, 'rejected')
+        local approverName = BccBanksInternal.getCharacterNameById(approver)
+        local lines = {
+            '**Action:** `Loan Rejected`',
+            '**Loan ID:** `' .. tostring(loanId) .. '`',
+            '**Bank:** `' .. tostring(BccBanksInternal.getBankName(res.loan and res.loan.bank_id)) .. '`',
+            '**Borrower:** `' .. tostring(BccBanksInternal.getCharacterNameById(res.loan and res.loan.character_id)) .. '`',
+            '**Borrower Char ID:** `' .. tostring(res.loan and res.loan.character_id or 'Unknown') .. '`',
+            '**Amount:** `$' .. tostring(res.loan and res.loan.amount or 'Unknown') .. '`',
+            '**Rejected By:** `' .. tostring(approverName) .. ' (' .. tostring(approver) .. ')`',
+        }
+        SendBankDiscordLog('Bank Loan Rejected', lines, 15158332)
+        AddLoanTransaction(loanId, res.loan and res.loan.character_id, tonumber(res.loan and res.loan.amount) or 0, 'loan - rejected', 'Loan rejected by character #' .. tostring(approver))
         NotifyClient(src, _U('admin_loan_rejected') or 'Loan rejected.', 'success', 3000)
         cb(true)
     else
@@ -887,6 +911,17 @@ BccUtils.RPC:Register('Feather:Banks:Admin:SetHours', function(params, cb, src)
     MySQL.query.await('UPDATE `bcc_banks` SET hours_active = ?, open_hour = ?, close_hour = ? WHERE id = ?', { actv, openH, closeH, bankId })
     -- Notify all clients to refresh bank data
     TriggerClientEvent('Feather:Banks:Refresh', -1)
+    local adminUser = VORPcore.getUser(src)
+    local adminId = adminUser and adminUser.getUsedCharacter and adminUser.getUsedCharacter.charIdentifier or 'Unknown'
+    local lines = {
+        '**Action:** `Bank Hours Updated`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(bankId)) .. '`',
+        '**Hours Active:** `' .. tostring(actv == 1) .. '`',
+        '**Open Hour:** `' .. tostring(openH) .. '`',
+        '**Close Hour:** `' .. tostring(closeH) .. '`',
+        '**Admin:** `' .. tostring(BccBanksInternal.getCharacterNameById(adminId)) .. ' (' .. tostring(adminId) .. ')`',
+    }
+    SendBankDiscordLog('Bank Hours Updated', lines, 3447003)
     cb(true)
 end)
 
@@ -906,5 +941,14 @@ BccUtils.RPC:Register('Feather:Banks:Admin:ToggleHours', function(params, cb, sr
     local actv = active and 1 or 0
     MySQL.query.await('UPDATE `bcc_banks` SET hours_active = ? WHERE id = ?', { actv, bankId })
     TriggerClientEvent('Feather:Banks:Refresh', -1)
+    local adminUser = VORPcore.getUser(src)
+    local adminId = adminUser and adminUser.getUsedCharacter and adminUser.getUsedCharacter.charIdentifier or 'Unknown'
+    local lines = {
+        '**Action:** `Bank Hours Toggled`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(bankId)) .. '`',
+        '**Hours Active:** `' .. tostring(active) .. '`',
+        '**Admin:** `' .. tostring(BccBanksInternal.getCharacterNameById(adminId)) .. ' (' .. tostring(adminId) .. ')`',
+    }
+    SendBankDiscordLog('Bank Hours Toggled', lines, 3447003)
     cb(true)
 end)

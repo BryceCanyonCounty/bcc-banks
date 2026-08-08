@@ -2,8 +2,10 @@ function GetAccountTransactions(account)
     local transactions = MySQL.query.await(
         'SELECT ' ..
         '  t.id, t.account_id, t.loan_id, t.character_id, ' ..
+        '  CONCAT(COALESCE(ch.firstname, ""), " ", COALESCE(ch.lastname, "")) AS character_name, ' ..
         '  t.amount, t.type, t.description, t.created_at ' ..
         'FROM bcc_transactions AS t ' ..
+        'LEFT JOIN characters AS ch ON ch.charidentifier = t.character_id ' ..
         'LEFT JOIN bcc_loans AS l ON l.id = t.loan_id ' ..
         'WHERE t.account_id = ? OR l.account_id = ? ' ..
         'ORDER BY t.created_at DESC, t.id DESC;',
@@ -69,6 +71,21 @@ function AddLoanTransaction(loan, character, amount, txType, description)
     }
     insertTransaction(
         'INSERT INTO `bcc_transactions` (`id`, `loan_id`, `character_id`, `amount`, `type`, `description`) VALUES (?, ?, ?, ?, ?, ?);',
+        params
+    )
+    return true
+end
+
+function AddCharacterTransaction(character, amount, txType, description)
+    local params = {
+        BccUtils.UUID(),
+        character,
+        amount,
+        txType,
+        description
+    }
+    insertTransaction(
+        'INSERT INTO `bcc_transactions` (`id`, `character_id`, `amount`, `type`, `description`) VALUES (?, ?, ?, ?, ?);',
         params
     )
     return true

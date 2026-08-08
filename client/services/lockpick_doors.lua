@@ -4,8 +4,14 @@
 local lockpickCfg = Config.LockPicking or { Enabled = false }
 if not lockpickCfg.Enabled then return end
 
--- BccUtils initialized in client/helpers/main.lua
-local Prompts = BccUtils and BccUtils.Prompts
+-- BccUtils initialized in client/helpers/main.lua. Some bcc-utils builds expose
+-- Prompt, older examples used Prompts.
+local Prompts = BccUtils and (BccUtils.Prompts or BccUtils.Prompt)
+local bypassAccessCache = {
+  checkedAt = 0,
+  allowed = false,
+  refreshing = false
+}
 
 -- Positions for bank doors from bcc-doorlocks doorhashes.lua
 -- Only includes doors referenced in Config.Doors
@@ -62,10 +68,47 @@ local function canInteractWithDoor(ped, doorHash, pos)
   local searchRadius = tonumber(lockpickCfg.DoorSearchRadius or 1.0) or 1.0
   local doorEntity = GetClosestObjectOfType(pos.x, pos.y, pos.z, searchRadius, doorHash, false, false, false)
   if not doorEntity or doorEntity == 0 or not DoesEntityExist(doorEntity) then
-    return false
+    -- Some door hashes are door-system hashes, not reliable object model hashes.
+    -- Keep the prompt usable instead of hiding it permanently.
+    return true
   end
 
   return HasEntityClearLosToEntity(ped, doorEntity, 17)
+end
+
+local function textOrFallback(key, fallback)
+  local value = _U(key)
+  if type(value) ~= 'string' or value == key or value == '' or value:find('Translation %[', 1, true) == 1 then
+    return fallback
+  end
+  return value
+end
+
+local function hasDoorBypassAccess()
+  if lockpickCfg.AdminBypass == false then
+    return false
+  end
+
+  local now = GetGameTimer()
+  if (now - bypassAccessCache.checkedAt) < 10000 then
+    return bypassAccessCache.allowed
+  end
+
+  if not bypassAccessCache.refreshing then
+    bypassAccessCache.refreshing = true
+    CreateThread(function()
+      local ok, allowed = BccUtils.RPC:CallAsync('Feather:Banks:CheckAdmin', {})
+      bypassAccessCache.checkedAt = GetGameTimer()
+      bypassAccessCache.allowed = ok and allowed == true
+      bypassAccessCache.refreshing = false
+    end)
+  end
+
+  return bypassAccessCache.allowed
+end
+
+local function setDoorStateBypass(doorHash, state)
+  TriggerServerEvent('feather-banks:lockpick:bypassSetDoorState', doorHash, state)
 end
 
 local function tryLockpickDoor(doorHash)
@@ -112,22 +155,33 @@ local function tryLockpickDoor(doorHash)
   end
 end
 
-RegisterNetEvent('feather-banks:lockpick:setDoorState', function(doorHash, state, actorSrc)
+RegisterNetEvent('feather-banks:lockpick:setDoorState', function(doorHash, state, actorSrc, reason)
   doorHash = tonumber(doorHash)
   if not doorHash or Config.Doors[doorHash] == nil then return end
   ensureDoorRegistered(doorHash)
   DoorSystemSetDoorState(doorHash, state)
   DoorSystemSetOpenRatio(doorHash, 0.0, true)
-  if state == 0 and actorSrc == GetPlayerServerId(PlayerId()) then
+  if actorSrc ~= GetPlayerServerId(PlayerId()) then return end
+  if state == 0 and reason == 'bypass' then
+    Notify(textOrFallback('door_unlocked', 'Door unlocked'), 'success', 3000)
+  elseif state == 0 then
     Notify(_U('lockpick_success'), 'success', 3000)
+  elseif state == 1 then
+    Notify(textOrFallback('door_locked', 'Door locked.'), 'success', 3000)
   end
 end)
 
 CreateThread(function()
   if not Prompts then return end
 
-  local group = Prompts:SetupPromptGroup()
-  local prompt = group:RegisterPrompt(_U('lockpick_door_prompt'), lockpickCfg.PromptKey or 0xCEFD9220, 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
+  hasDoorBypassAccess()
+
+  local openGroup = Prompts:SetupPromptGroup()
+  local openPrompt = openGroup:RegisterPrompt(textOrFallback('door_open_prompt', 'Open Door'), lockpickCfg.PromptKey or 0xCEFD9220, 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
+  local lockpickGroup = Prompts:SetupPromptGroup()
+  local lockpickPrompt = lockpickGroup:RegisterPrompt(_U('lockpick_door_prompt'), lockpickCfg.PromptKey or 0xCEFD9220, 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
+  local lockGroup = Prompts:SetupPromptGroup()
+  local lockPrompt = lockGroup:RegisterPrompt(textOrFallback('door_lock_prompt', 'Lock Door'), lockpickCfg.LockPromptKey or lockpickCfg.PromptKey or 0xCEFD9220, 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
 
   while true do
     Wait(5)
@@ -143,10 +197,24 @@ CreateThread(function()
           ensureDoorRegistered(doorHash)
           local doorState = DoorSystemGetDoorState(doorHash)
           if doorState ~= 0 then
+            local hasAccess = hasDoorBypassAccess()
             shown = true
-            group:ShowGroup('Door')
-            if prompt:HasCompleted() then
+            if hasAccess then
+              openGroup:ShowGroup(textOrFallback('door_prompt_group', 'Door'))
+            else
+              lockpickGroup:ShowGroup(textOrFallback('door_prompt_group', 'Door'))
+            end
+            if hasAccess and openPrompt:HasCompleted() then
+              setDoorStateBypass(doorHash, 0)
+            elseif not hasAccess and lockpickPrompt:HasCompleted() then
               tryLockpickDoor(doorHash)
+            end
+            break -- avoid overlapping prompts
+          elseif hasDoorBypassAccess() then
+            shown = true
+            lockGroup:ShowGroup(textOrFallback('door_prompt_group', 'Door'))
+            if lockPrompt:HasCompleted() then
+              setDoorStateBypass(doorHash, 1)
             end
             break -- avoid overlapping prompts
           end

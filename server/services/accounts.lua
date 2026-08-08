@@ -163,6 +163,17 @@ BccUtils.RPC:Register('Feather:Banks:CreateAccount', function(params, cb, src)
     end
 
     devPrint("CreateAccount success:", out)
+    local createdAccount = out and BccBanksInternal.getAccountSummary and BccBanksInternal.getAccountSummary(out.id or out)
+    AddAccountTransaction(createdAccount and createdAccount.id or (out and out.id), characterId, 0, 'account - created', 'Account created')
+    local lines = {
+        '**Action:** `Account Created`',
+        '**Account ID:** `' .. tostring(createdAccount and createdAccount.id or (out and out.id) or 'Unknown') .. '`',
+        '**Account Name:** `' .. tostring(createdAccount and createdAccount.name or name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(bank)) .. '`',
+        '**Account Number:** `' .. tostring(createdAccount and createdAccount.account_number or 'Pending') .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Account Created', lines, 5763719)
     NotifyClient(src, _U('success_account_created'), "success", 4000)
     cb(true, out)
 end)
@@ -225,6 +236,14 @@ BccUtils.RPC:Register('Feather:Banks:CloseAccount', function(params, cb, src)
     end
 
     devPrint("CloseAccount success:", out)
+    AddCharacterTransaction(characterId, 0, 'account - closed', 'Account closed #' .. tostring(account))
+    local lines = {
+        '**Action:** `Account Closed`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(bank)) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Account Closed', lines, 15158332)
     NotifyClient(src, _U('success_account_closed'), "success", 4000)
     cb(true, out)
 end)
@@ -357,12 +376,6 @@ BccUtils.RPC:Register('Feather:Banks:GetAccountAccessList', function(params, cb,
         cb(false)
         return
     end
-    if not isNearAccountBank(src, accId) then
-        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
-        cb(false)
-        return
-    end
-
     if not isNearAccountBank(src, account) then
         NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
         cb(false)
@@ -472,6 +485,18 @@ BccUtils.RPC:Register('Feather:Banks:GiveAccountAccess', function(params, cb, sr
     end
 
     devPrint("GiveAccountAccess: Access granted for character", otherCharacter, "on account", account)
+    AddAccountTransaction(account, requesterId, 0, 'account access - granted', 'Granted access to character #' .. tostring(otherCharacter) .. ' level ' .. tostring(level))
+    local accountRow = BccBanksInternal.getAccountSummary(account)
+    local lines = {
+        '**Action:** `Account Access Granted`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Target Character:** `' .. tostring(BccBanksInternal.getCharacterNameById(otherCharacter)) .. '`',
+        '**Target Char ID:** `' .. tostring(otherCharacter) .. '`',
+        '**Access Level:** `' .. tostring(level) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Account Access Granted', lines, 5763719)
     NotifyClient(src, _U('success_access_granted'), "success", 4000)
     cb(true)
 end)
@@ -531,6 +556,17 @@ BccUtils.RPC:Register('Feather:Banks:RemoveAccountAccess', function(params, cb, 
     end
 
     NotifyClient(src, _U('success_access_removed'), "success", 4000)
+    AddAccountTransaction(account, requesterId, 0, 'account access - removed', 'Removed access from character #' .. tostring(target))
+    local accountRow = BccBanksInternal.getAccountSummary(account)
+    local lines = {
+        '**Action:** `Account Access Removed`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Target Character:** `' .. tostring(BccBanksInternal.getCharacterNameById(target)) .. '`',
+        '**Target Char ID:** `' .. tostring(target) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Account Access Removed', lines, 15158332)
     cb(true)
 end)
 
@@ -604,6 +640,17 @@ BccUtils.RPC:Register('Feather:Banks:DepositCash', function(params, cb, src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'deposit - cash', description)
 
     devPrint("DepositCash: success. account=", account, "amount=", amount)
+    local accountRow = BccBanksInternal.getAccountSummary(account)
+    local lines = {
+        '**Action:** `Cash Deposit`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `$' .. tostring(amount) .. '`',
+        '**Description:** `' .. tostring(description) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Cash Deposit', lines, 3066993)
     NotifyClient(src, _U('success_deposit_cash', tostring(amount)) or ('Successfully deposited $' .. tostring(amount)), "success", 4000)
     cb(true)
 end)
@@ -679,6 +726,17 @@ BccUtils.RPC:Register('Feather:Banks:DepositGold', function(params, cb, src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'deposit - gold', description)
 
     devPrint("DepositGold: success. account=", account, "amount=", amount)
+    local accountRow = BccBanksInternal.getAccountSummary(account)
+    local lines = {
+        '**Action:** `Gold Deposit`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `' .. tostring(amount) .. ' gold`',
+        '**Description:** `' .. tostring(description) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Gold Deposit', lines, 15844367)
     NotifyClient(src, _U('success_deposit_gold', tostring(amount)), "success", 4000)
     cb(true)
 end)
@@ -754,6 +812,17 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawCash', function(params, cb, src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'withdraw - cash', description)
 
     devPrint("WithdrawCash: success. account=", account, "amount=", amount)
+    local accountRow = BccBanksInternal.getAccountSummary(account)
+    local lines = {
+        '**Action:** `Cash Withdrawal`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `$' .. tostring(amount) .. '`',
+        '**Description:** `' .. tostring(description) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Cash Withdrawal', lines, 15105570)
     NotifyClient(src, _U('success_withdraw_cash', tostring(amount)), "success", 4000)
     cb(true)
 end)
@@ -829,6 +898,17 @@ BccUtils.RPC:Register('Feather:Banks:WithdrawGold', function(params, cb, src)
     AddAccountTransaction(account, char.charIdentifier, amount, 'withdraw - gold', description)
 
     devPrint("WithdrawGold: success. account=", account, "amount=", amount)
+    local accountRow = BccBanksInternal.getAccountSummary(account)
+    local lines = {
+        '**Action:** `Gold Withdrawal`',
+        '**Account ID:** `' .. tostring(account) .. '`',
+        '**Account Name:** `' .. tostring(accountRow and accountRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(accountRow and accountRow.bank_id)) .. '`',
+        '**Amount:** `' .. tostring(amount) .. ' gold`',
+        '**Description:** `' .. tostring(description) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Gold Withdrawal', lines, 15105570)
     NotifyClient(src, _U('success_withdraw_gold', tostring(amount)), "success", 4000)
     cb(true)
 end)
@@ -966,6 +1046,18 @@ BccUtils.RPC:Register('Feather:Banks:TransferCash', function(params, cb, src)
     AddAccountTransaction(toAcc.id, char.charIdentifier, amount, 'transfer - in', description .. ' <- ' .. tostring(fromSuffix))
 
     devPrint("Transfer completed. from:", fromAcc.id, "to:", toAcc.id, "amount:", amount, "fee:", fee)
+    local lines = {
+        '**Action:** `Cash Transfer`',
+        '**From Account:** `' .. tostring(fromAcc.name or fromAcc.id) .. ' (#' .. tostring(fromAcc.id) .. ')`',
+        '**To Account:** `' .. tostring(toAcc.name or toAcc.id) .. ' (#' .. tostring(toAcc.id) .. ')`',
+        '**From Bank:** `' .. tostring(BccBanksInternal.getBankName(fromAcc.bank_id)) .. '`',
+        '**To Bank:** `' .. tostring(BccBanksInternal.getBankName(toAcc.bank_id)) .. '`',
+        '**Amount:** `$' .. tostring(amount) .. '`',
+        '**Fee:** `$' .. tostring(fee) .. '`',
+        '**Description:** `' .. tostring(description) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Bank Transfer Completed', lines, 3447003)
     NotifyClient(src, _U('success_transfer', tostring(amount)), 'success', 4000)
     cb(true, { fee = fee, debited = totalDebit })
 end)

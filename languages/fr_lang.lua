@@ -1,5 +1,11 @@
 Locales["fr_lang"] = {
     bank_label = "Banque",
+    door_prompt_group = "Porte",
+    door_open_prompt = "Ouvrir la porte",
+    door_lockpick_prompt = "Crocheter la serrure",
+    door_lock_prompt = "Verrouiller la porte",
+    door_unlocked = "Porte deverrouillee",
+    door_locked = "Porte verrouillee",
     -- Closed prompt wording (match stables/guarma style)
     hours = " est ouvert de ~o~",
     to = ":00~q~ à ~o~",
@@ -109,6 +115,7 @@ Locales["fr_lang"] = {
     sdb_box_subheader = "Votre coffre dans cette banque",
     open_box_button = "Ouvrir le coffre",
     manage_access_button = "Gérer l'accès",
+    delete_sdb_button = "Supprimer le coffre",
 
     -- OpenCreateSDBPage
     create_sdb_header = "Créer un coffre-fort",
@@ -135,6 +142,8 @@ Locales["fr_lang"] = {
 
     -- OpenSDBGiveAccessPage
     grant_sdb_access_header = "Accorder l'accès au coffre",
+    grant_sdb_access_help_identity = "Utilise l'ID personnage ou prénom + nom.",
+    grant_sdb_access_help_levels = "Niveaux: 1 Admin, 2 Prendre/poser, 3 Poser, 4 Voir.",
     invalid_char_id_level = "Entrez un nom et un niveau d'accès valides.",
     failed_grant_access = "Impossible d'accorder l'accès.",
     access_granted = "Accès accordé.",
@@ -149,6 +158,12 @@ Locales["fr_lang"] = {
     cancel_button = "Annuler",
     access_removed = "Accès retiré.",
     failed_remove_access = "Impossible de retirer l'accès.",
+    confirm_delete_sdb_header = "Supprimer le coffre",
+    confirm_delete_sdb_text = "Supprimer %s et son inventaire ? Action irréversible.",
+    confirm_delete_sdb_text_with_items = "%s contient des objets. Voulez-vous vraiment le supprimer avec son inventaire ? Action irréversible.",
+    confirm_delete_sdb_button = "Oui, supprimer",
+    sdb_deleted_notify = "Coffre supprimé.",
+    failed_delete_sdb = "Impossible de supprimer le coffre.",
 
     -- OpenAccountDetails
     load_account_error = "Impossible de charger le compte.",
@@ -495,8 +510,8 @@ Locales["fr_lang"] = {
     admin_bank_name_label = "Nom de la banque",
     admin_bank_name_placeholder = "Saisissez le nom de la banque",
     sdb_select_payment = "Sélectionnez le paiement :",
-    sdb_pay_cash = "Payer en espèces",
-    sdb_pay_gold = "Payer en or",
+    sdb_pay_cash = "Espèces",
+    sdb_pay_gold = "Or",
     sdb_payment_cash_selected = "Paiement en espèces sélectionné",
     sdb_payment_gold_selected = "Paiement en or sélectionné",
     menu_prompt = "Menu",

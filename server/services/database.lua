@@ -13,6 +13,22 @@ CreateThread(function()
         end
     end
 
+    local function ensureColumnDefinition(tableName, columnName, definition)
+        local rows = MySQL.query.await([[
+            SELECT COUNT(*) AS cnt
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?
+              AND COLUMN_NAME = ?
+        ]], { tableName, columnName })
+        local exists = rows and rows[1] and tonumber(rows[1].cnt or 0) > 0
+        if exists then
+            MySQL.query.await(('ALTER TABLE `%s` MODIFY COLUMN `%s` %s'):format(tableName, columnName, definition))
+        else
+            MySQL.query.await(('ALTER TABLE `%s` ADD COLUMN `%s` %s'):format(tableName, columnName, definition))
+        end
+    end
+
     -- bcc_banks
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcc_banks` (
@@ -206,6 +222,7 @@ CreateThread(function()
               ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
     ]])
+    ensureColumnDefinition('bcc_safety_deposit_boxes', 'inventory_id', 'CHAR(40) NULL')
 
     -- bcc_safety_deposit_boxes_access
     MySQL.query.await([[

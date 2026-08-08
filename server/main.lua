@@ -13,6 +13,7 @@ end)
 -- Backfill SDB inventories for rows created before VORP integration
 CreateThread(function()
 	Wait(2000)
+	MySQL.query.await('ALTER TABLE `bcc_safety_deposit_boxes` MODIFY COLUMN `inventory_id` CHAR(40) NULL')
 	local rows = MySQL.query.await('SELECT id, size FROM `bcc_safety_deposit_boxes` WHERE `inventory_id` IS NULL') or {}
 	if #rows == 0 then return end
 
@@ -26,7 +27,7 @@ CreateThread(function()
 			local invData = {
 				id = invId,
 				name = invName,
-				limit = 100,
+				limit = tonumber(sz.MaxWeight) or 100,
 				acceptWeapons = true,
 				shared = true,
 				ignoreItemStackLimit = (sz.IgnoreItemLimit == true),

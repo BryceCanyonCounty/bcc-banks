@@ -1,5 +1,11 @@
 Locales["en_lang"] = {
     bank_label = "Bank",
+    door_prompt_group = "Door",
+    door_open_prompt = "Open Door",
+    door_lockpick_prompt = "Break Lock",
+    door_lock_prompt = "Lock Door",
+    door_unlocked = "Door unlocked",
+    door_locked = "Door locked",
     -- Closed prompt wording (match stables/guarma style)
     hours = " is open from ~o~",
     to = ":00~q~ to ~o~",
@@ -109,6 +115,7 @@ Locales["en_lang"] = {
     sdb_box_subheader = "Your box at this bank",
     open_box_button = "Open Box",
     manage_access_button = "Manage Access",
+    delete_sdb_button = "Delete Box",
 
     -- OpenCreateSDBPage
     create_sdb_header = "Create Safety Deposit Box",
@@ -135,6 +142,8 @@ Locales["en_lang"] = {
 
     -- OpenSDBGiveAccessPage
     grant_sdb_access_header = "Grant SDB Access",
+    grant_sdb_access_help_identity = "Use character ID or first + last name.",
+    grant_sdb_access_help_levels = "Levels: 1 Admin, 2 Take/Add, 3 Add, 4 View.",
     invalid_char_id_level = "Enter valid character ID and access level.",
     failed_grant_access = "Failed to grant access.",
     access_granted = "Access granted.",
@@ -149,6 +158,12 @@ Locales["en_lang"] = {
     cancel_button = "Cancel",
     access_removed = "Access removed.",
     failed_remove_access = "Failed to remove access.",
+    confirm_delete_sdb_header = "Delete Safety Deposit Box",
+    confirm_delete_sdb_text = "Delete %s and its inventory? This cannot be undone.",
+    confirm_delete_sdb_text_with_items = "%s has items inside. Are you sure you want to delete it and its inventory? This cannot be undone.",
+    confirm_delete_sdb_button = "Yes, Delete Box",
+    sdb_deleted_notify = "Safety deposit box deleted.",
+    failed_delete_sdb = "Failed to delete safety deposit box.",
 
     -- OpenAccountDetails
     load_account_error = "Could not load account.",
@@ -495,8 +510,8 @@ Locales["en_lang"] = {
     admin_bank_name_label = "Bank Name",
     admin_bank_name_placeholder = "Enter bank name",
     sdb_select_payment = "Select payment:",
-    sdb_pay_cash = "Pay With Cash",
-    sdb_pay_gold = "Pay With Gold",
+    sdb_pay_cash = "Cash",
+    sdb_pay_gold = "Gold",
     sdb_payment_cash_selected = "Payment set to Cash",
     sdb_payment_gold_selected = "Payment set to Gold",
     menu_prompt = "Menu",

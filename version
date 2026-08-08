@@ -1,3 +1,14 @@
+<1.6.0>
+- Removed raw account UUID and bank UUID from the account details menu.
+- Added an admin button to view account transactions.
+- Improved the SDB creation page:
+  - replaced currency buttons with an arrow selector
+  - replaced size buttons with image-based size options
+- Added safety deposit box deletion with confirmation and inventory cleanup.
+- Added admin door open/close bypass for bank doors.
+- Added Discord webhook logging for bank activity.
+- Added transaction log entries for more banking actions.
+- Updated `bcc_safety_deposit_boxes.inventory_id` to `CHAR(40)` for `sdb_` UUID inventory IDs.
 <1.5.2>
 - Fixed: resource restarts could leave an orphaned teller and spawn a duplicate NPC
 - Thanks to ImHerHela for bringing the loan issues to  our attention

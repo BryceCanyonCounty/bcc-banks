@@ -1,5 +1,5 @@
 function OpenSDBListPage(bank, ParentPage)
-    local SDBListPage = FeatherBankMenu:RegisterPage('bank:page:sdb:list:' .. tostring(bank.id))
+    local SDBListPage = FeatherBankMenu:RegisterPage('bank:page:sdb:list:' .. tostring(bank.id) .. ':' .. tostring(GetGameTimer()))
     SDBListPage:RegisterElement('header', {
         value = _U("sdb_list_header"),
         slot  = 'header'
@@ -25,7 +25,7 @@ function OpenSDBListPage(bank, ParentPage)
                 label = label,
                 style = {}
             }, function()
-                OpenSDBBoxMenu(box, ParentPage, SDBListPage)
+                OpenSDBBoxMenu(box, ParentPage, SDBListPage, bank)
             end)
         end
     end
@@ -57,7 +57,7 @@ function OpenSDBListPage(bank, ParentPage)
     FeatherBankMenu:Open({ startupPage = SDBListPage })
 end
 
-function OpenSDBBoxMenu(box, ParentPage, SDBListPage)
+function OpenSDBBoxMenu(box, ParentPage, SDBListPage, bank)
     local SDBoxPage = FeatherBankMenu:RegisterPage('bank:page:sdb:box:' .. tostring(box.id))
     SDBoxPage:RegisterElement('header', {
         value = _U("sdb_box_header"),
@@ -83,6 +83,12 @@ function OpenSDBBoxMenu(box, ParentPage, SDBListPage)
     }, function()
         OpenSDBAccessMenu(box, ParentPage, SDBListPage)
     end)
+    SDBoxPage:RegisterElement('button', {
+        label = _U("delete_sdb_button"),
+        style = {}
+    }, function()
+        OpenSDBDeleteConfirmPage(box, SDBoxPage, SDBListPage, bank)
+    end)
     SDBoxPage:RegisterElement('line', {
         slot  = 'footer',
         style = {}
@@ -101,7 +107,60 @@ function OpenSDBBoxMenu(box, ParentPage, SDBListPage)
     FeatherBankMenu:Open({ startupPage = SDBoxPage })
 end
 
-function OpenCreateSDBPage(bank, ParentPage, selectedPayWith)
+function OpenSDBDeleteConfirmPage(box, ParentPage, SDBListPage, bank)
+    local DeletePage = FeatherBankMenu:RegisterPage('sdb:page:delete:' .. tostring(box.id))
+    local hasInventoryItems = false
+    local infoOk, deleteInfo = BccUtils.RPC:CallAsync('Feather:Banks:GetSDBDeleteInfo', {
+        sdb_id = NormalizeId(box.id)
+    })
+    if infoOk and deleteInfo and deleteInfo.hasItems then
+        hasInventoryItems = true
+    end
+
+    DeletePage:RegisterElement('header', {
+        value = _U("confirm_delete_sdb_header"),
+        slot  = 'header'
+    })
+    DeletePage:RegisterElement('line', {
+        slot  = 'header',
+        style = {}
+    })
+    DeletePage:RegisterElement('textdisplay', {
+        value = hasInventoryItems
+            and _U("confirm_delete_sdb_text_with_items", box.name or tostring(box.id))
+            or _U("confirm_delete_sdb_text", box.name or tostring(box.id)),
+        slot  = 'content'
+    })
+    DeletePage:RegisterElement('button', {
+        label = _U("confirm_delete_sdb_button"),
+        style = {}
+    }, function()
+        local ok = BccUtils.RPC:CallAsync('Feather:Banks:DeleteSDB', {
+            sdb_id = NormalizeId(box.id)
+        })
+        if ok then
+            OpenSDBListPage(bank or { id = box.bank_id }, ParentPage)
+        end
+    end)
+    DeletePage:RegisterElement('line', {
+        slot  = 'footer',
+        style = {}
+    })
+    DeletePage:RegisterElement('button', {
+        label = _U("cancel_button"),
+        slot  = 'footer',
+        style = {}
+    }, function()
+        ParentPage:RouteTo()
+    end)
+    DeletePage:RegisterElement('bottomline', {
+        slot  = 'footer',
+        style = {}
+    })
+    FeatherBankMenu:Open({ startupPage = DeletePage })
+end
+
+function OpenCreateSDBPage(bank, ParentPage, selectedPayWith, initialName, initialSize)
     local CreateSDBPage = FeatherBankMenu:RegisterPage('bank:page:sdb:create:' .. tostring(bank.id))
     CreateSDBPage:RegisterElement('header', {
         value = _U("create_sdb_header"),
@@ -115,11 +174,11 @@ function OpenCreateSDBPage(bank, ParentPage, selectedPayWith)
         slot  = 'header',
         style = {}
     })
-    local sdbName = ''
-    local sdbSize = nil
+    local sdbName = initialName or ''
+    local sdbSize = initialSize or nil
     CreateSDBPage:RegisterElement('input', {
         label       = _U("box_name_label"),
-        placeholder = _U("box_name_placeholder"),
+        placeholder = (sdbName ~= '' and sdbName) or _U("box_name_placeholder"),
         style       = {}
     }, function(data)
         sdbName = data.value
@@ -127,24 +186,28 @@ function OpenCreateSDBPage(bank, ParentPage, selectedPayWith)
     CreateSDBPage:RegisterElement('line', { style = {} })
     
     -- Choose payment currency
-    local payWith = selectedPayWith or 'cash' -- 'cash' or 'gold'
-    CreateSDBPage:RegisterElement('textdisplay', {
-        value = _U('sdb_select_payment'),
-        slot  = 'content'
-    })
-    CreateSDBPage:RegisterElement('button', {
-        label = _U('sdb_pay_cash'),
+    local payWith = (selectedPayWith == 'gold') and 'gold' or 'cash'
+    CreateSDBPage:RegisterElement('arrows', {
+        label = _U('sdb_select_payment'),
+        start = (payWith == 'gold') and 2 or 1,
+        options = {
+            {
+                display = _U('sdb_pay_cash'),
+                extra = 'cash'
+            },
+            {
+                display = _U('sdb_pay_gold'),
+                extra = 'gold'
+            }
+        },
+        persist = true,
         style = {}
-    }, function()
-        Notify(_U('sdb_payment_cash_selected'), 1500)
-        OpenCreateSDBPage(bank, ParentPage, 'cash')
-    end)
-    CreateSDBPage:RegisterElement('button', {
-        label = _U('sdb_pay_gold'),
-        style = {}
-    }, function()
-        Notify(_U('sdb_payment_gold_selected'), 1500)
-        OpenCreateSDBPage(bank, ParentPage, 'gold')
+    }, function(data)
+        local selected = data and data.value and data.value.extra
+        if selected and selected ~= payWith then
+            Notify(selected == 'gold' and _U('sdb_payment_gold_selected') or _U('sdb_payment_cash_selected'), 1500)
+            OpenCreateSDBPage(bank, ParentPage, selected, sdbName, sdbSize)
+        end
     end)
     
     CreateSDBPage:RegisterElement('line', { style = {} })
@@ -167,29 +230,56 @@ function OpenCreateSDBPage(bank, ParentPage, selectedPayWith)
         end
     end
 
-    local smallPriceStr  = priceStr(sizes.Small and sizes.Small.CashPrice,  sizes.Small and sizes.Small.GoldPrice)
-    local mediumPriceStr = priceStr(sizes.Medium and sizes.Medium.CashPrice, sizes.Medium and sizes.Medium.GoldPrice)
-    local largePriceStr  = priceStr(sizes.Large and sizes.Large.CashPrice,  sizes.Large and sizes.Large.GoldPrice)
-    CreateSDBPage:RegisterElement('button', {
-        label = _U('size_small_button') .. ' (' .. tostring(smallSlots) .. ' slots, ' .. smallPriceStr .. ')',
-        style = {}
-    }, function()
-        sdbSize = 'Small'
-        Notify(_U("size_selected_notify", _U("size_small_button")), 2000)
-    end)
-    CreateSDBPage:RegisterElement('button', {
-        label = _U('size_medium_button') .. ' (' .. tostring(mediumSlots) .. ' slots, ' .. mediumPriceStr .. ')',
-        style = {}
-    }, function()
-        sdbSize = 'Medium'
-        Notify(_U("size_selected_notify", _U("size_medium_button")), 2000)
-    end)
-    CreateSDBPage:RegisterElement('button', {
-        label = _U('size_large_button') .. ' (' .. tostring(largeSlots) .. ' slots, ' .. largePriceStr .. ')',
-        style = {}
-    }, function()
-        sdbSize = 'Large'
-        Notify(_U("size_selected_notify", _U("size_large_button")), 2000)
+    local sizeImage = 'nui://bcc-banks/ui/images/safety_deposit_box.png'
+    local sizeOptions = {
+        {
+            size = 'Small',
+            label = _U('size_small_button'),
+            slots = smallSlots,
+            price = priceStr(sizes.Small and sizes.Small.CashPrice, sizes.Small and sizes.Small.GoldPrice)
+        },
+        {
+            size = 'Medium',
+            label = _U('size_medium_button'),
+            slots = mediumSlots,
+            price = priceStr(sizes.Medium and sizes.Medium.CashPrice, sizes.Medium and sizes.Medium.GoldPrice)
+        },
+        {
+            size = 'Large',
+            label = _U('size_large_button'),
+            slots = largeSlots,
+            price = priceStr(sizes.Large and sizes.Large.CashPrice, sizes.Large and sizes.Large.GoldPrice)
+        }
+    }
+    local sizeItems = {}
+    for index, option in ipairs(sizeOptions) do
+        table.insert(sizeItems, {
+            type = 'imagebox',
+            index = index,
+            data = {
+                img = sizeImage,
+                label = option.price,
+                tooltip = option.label .. ' - ' .. tostring(option.slots) .. ' slots',
+                badge = nil,
+                style = { margin = '6px' },
+                disabled = false,
+                sound = {
+                    action = 'SELECT',
+                    soundset = 'RDRO_Character_Creator_Sounds'
+                }
+            }
+        })
+    end
+    CreateSDBPage:RegisterElement('imageboxcontainer', {
+        slot = 'content',
+        showBadges = true,
+        items = sizeItems
+    }, function(data)
+        local selected = data and data.child and sizeOptions[data.child.index]
+        if selected then
+            sdbSize = selected.size
+            Notify(_U("size_selected_notify", selected.label), 2000)
+        end
     end)
     CreateSDBPage:RegisterElement('line', {
         slot  = 'footer',
@@ -297,6 +387,7 @@ end
 
 function OpenSDBGiveAccessPage(sdb, ParentPage, SDBListPage)
     local SDBGiveAccessPage = FeatherBankMenu:RegisterPage('sdb:page:access:give:' .. tostring(sdb.id))
+    local charId = nil
     local firstName = ''
     local lastName  = ''
     local level     = nil
@@ -308,6 +399,13 @@ function OpenSDBGiveAccessPage(sdb, ParentPage, SDBListPage)
         slot  = 'header',
         style = {}
     })
+    SDBGiveAccessPage:RegisterElement('input', {
+        label       = _U("character_id_label"),
+        placeholder = _U("character_id_placeholder"),
+        style       = {}
+    }, function(data)
+        charId = tonumber(data.value)
+    end)
     SDBGiveAccessPage:RegisterElement('input', {
         label       = _U("check_recipient_label"),
         placeholder = _U("check_recipient_placeholder"),
@@ -335,12 +433,18 @@ function OpenSDBGiveAccessPage(sdb, ParentPage, SDBListPage)
     }, function()
         local fn = firstName:match('^%s*(.-)%s*$')
         local ln = lastName:match('^%s*(.-)%s*$')
-        if fn == '' or ln == '' or not level then
+        if (not charId or charId < 1) and (fn == '' or ln == '') then
+            Notify(_U("invalid_character_id"), 4000)
+            return
+        end
+        if not level then
             Notify(_U("invalid_char_id_level"), 4000)
             return
         end
         local ok, res = BccUtils.RPC:CallAsync('Feather:Banks:AddSDBAccess', {
             sdb_id     = NormalizeId(sdb.id),
+            character  = charId,
+            user_src   = charId,
             first_name = fn,
             last_name  = ln,
             level      = level
@@ -359,6 +463,18 @@ function OpenSDBGiveAccessPage(sdb, ParentPage, SDBListPage)
         OpenSDBAccessMenu(sdb, ParentPage, SDBListPage)
     end)
     SDBGiveAccessPage:RegisterElement('bottomline', {
+        slot  = 'footer',
+        style = {}
+    })
+    SDBGiveAccessPage:RegisterElement('textdisplay', {
+        value = _U("grant_sdb_access_help_identity"),
+        slot  = 'footer'
+    })
+    SDBGiveAccessPage:RegisterElement('textdisplay', {
+        value = _U("grant_sdb_access_help_levels"),
+        slot  = 'footer'
+    })
+    SDBGiveAccessPage:RegisterElement('line', {
         slot  = 'footer',
         style = {}
     })

@@ -19,6 +19,38 @@ local function toFixed(n, decimals)
     return s
 end
 
+local function adminEscapeHtml(value)
+    local text = tostring(value or '')
+    return text:gsub('&', '&amp;')
+        :gsub('<', '&lt;')
+        :gsub('>', '&gt;')
+        :gsub('"', '&quot;')
+        :gsub("'", '&#39;')
+end
+
+local function adminFormatTransactionDate(value)
+    if type(value) == 'string' then
+        local y, m, d, h, mi = string.match(value, '^(%d+)%-(%d+)%-(%d+)%s+(%d+):(%d+)')
+        if y then
+            return tostring(d) .. '/' .. tostring(m) .. '/' .. tostring(y) .. ' ' .. tostring(h) .. ':' .. tostring(mi)
+        end
+    end
+    return tostring(value or '')
+end
+
+local function adminTransactionBadgeColor(txType)
+    if not txType then return '#666' end
+    if string.find(txType, 'deposit', 1, true) then return '#1e7e34' end
+    if string.find(txType, 'withdraw', 1, true) then return '#b02a37' end
+    if string.find(txType, 'transfer - out', 1, true) then return '#b76e00' end
+    if string.find(txType, 'transfer - in', 1, true) then return '#0d6efd' end
+    if string.find(txType, 'fee', 1, true) then return '#6c757d' end
+    if string.find(txType, 'loan', 1, true) then return '#6610f2' end
+    if string.find(txType, 'sdb', 1, true) then return '#6f42c1' end
+    if string.find(txType, 'gold', 1, true) then return '#b88900' end
+    return '#495057'
+end
+
 function OpenBankAdminMenu()
     local ok, allowed = BccUtils.RPC:CallAsync("Feather:Banks:CheckAdmin", {})
     if not ok or not allowed then
@@ -936,6 +968,91 @@ function OpenAdminLockedAccountsMenu(Parent, bank)
 end
 
 -- Admin view: account details (read-only)
+function OpenAdminAccountTransactionsPage(acc, transactions, ParentPage)
+    local accountNumber = acc.account_number or acc.id
+    local Page = FeatherBankMenu:RegisterPage('bank:page:admin:account:transactions:' .. tostring(acc.id) .. ':' .. tostring(GetGameTimer()))
+
+    Page:RegisterElement('header', {
+        value = _U('transactions_header') or 'Transactions',
+        slot = 'header'
+    })
+    Page:RegisterElement('subheader', {
+        value = _U('transactions_subheader', tostring(accountNumber)) or ('Recent activity for account #' .. tostring(accountNumber)),
+        slot = 'header'
+    })
+    Page:RegisterElement('line', {
+        slot = 'header',
+        style = {}
+    })
+
+    transactions = transactions or {}
+    if #transactions == 0 then
+        Page:RegisterElement('textdisplay', {
+            value = _U('no_transactions_found') or 'No transactions found.',
+            slot = 'content'
+        })
+    else
+        local html = [[
+            <div style="padding:10px;">
+              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                <thead>
+                  <tr style="background:#f1f3f5; color:#212529;">
+                    <th style="text-align:left; padding:8px 6px; width:10%">]] .. (_U('transaction_id') or 'ID') .. [[</th>
+                    <th style="text-align:left; padding:8px 6px; width:18%">]] .. (_U('transaction_when') or 'When') .. [[</th>
+                    <th style="text-align:left; padding:8px 6px; width:18%">]] .. (_U('transaction_by') or 'By') .. [[</th>
+                    <th style="text-align:left; padding:8px 6px; width:18%">]] .. (_U('transaction_type') or 'Type') .. [[</th>
+                    <th style="text-align:right; padding:8px 6px; width:18%">]] .. (_U('transaction_amount') or 'Amount') .. [[</th>
+                    <th style="text-align:left; padding:8px 6px;">]] .. (_U('transaction_description') or 'Description') .. [[</th>
+                  </tr>
+                </thead>
+                <tbody>
+        ]]
+        for i = 1, #transactions do
+            local tx = transactions[i]
+            local id = adminEscapeHtml(tx.id or '')
+            local when = adminEscapeHtml(adminFormatTransactionDate(tx.created_at))
+            local by = adminEscapeHtml(tx.character_name or tostring(tx.character_id or '-'))
+            local txType = adminEscapeHtml(tx.type or '')
+            local amount = adminEscapeHtml(toFixed(tx.amount, 2))
+            local desc = adminEscapeHtml(tx.description or '')
+            local badge = "<span style='display:inline-block; padding:2px 6px; border-radius:12px; background:" ..
+                adminTransactionBadgeColor(tx.type) .. "; color:#fff;'>" .. txType .. "</span>"
+            html = html ..
+                "<tr style='border-bottom:1px solid #dee2e6;'>" ..
+                "<td style='padding:8px 6px;'>" .. id .. "</td>" ..
+                "<td style='padding:8px 6px;'>" .. when .. "</td>" ..
+                "<td style='padding:8px 6px;'>" .. by .. "</td>" ..
+                "<td style='padding:8px 6px;'>" .. badge .. "</td>" ..
+                "<td style='padding:8px 6px; text-align:right;'>$" .. amount .. "</td>" ..
+                "<td style='padding:8px 6px;'>" .. desc .. "</td>" ..
+                "</tr>"
+        end
+        html = html .. "</tbody></table></div>"
+        Page:RegisterElement('html', {
+            value = { html },
+            slot = 'content'
+        })
+    end
+
+    Page:RegisterElement('line', {
+        slot = 'footer',
+        style = {}
+    })
+    Page:RegisterElement('button', {
+        label = _U('back_button'),
+        slot = 'footer',
+        style = {}
+    }, function()
+        ParentPage:RouteTo()
+    end)
+    Page:RegisterElement('bottomline', {
+        slot = 'footer',
+        style = {}
+    })
+
+    FeatherBankMenu:Open({ startupPage = Page })
+end
+
 function OpenAdminAccountDetails(accountId, ParentPage)
     local ok, resp = BccUtils.RPC:CallAsync('Feather:Banks:Admin:GetAccount', { account = tostring(accountId) })
     if not ok or not resp or not resp.account then
@@ -992,6 +1109,12 @@ function OpenAdminAccountDetails(accountId, ParentPage)
             (_U('admin_account_unlocked_status') or 'Status: Unlocked'),
         slot = 'content'
     })
+    Page:RegisterElement('button', {
+        label = _U('view_transactions_button') or 'View Transactions',
+        style = {}
+    }, function()
+        OpenAdminAccountTransactionsPage(acc, resp.transactions or {}, Page)
+    end)
     Page:RegisterElement('button', {
         label = isFrozen and (_U('admin_unlock_account_button') or 'Unlock Account') or
             (_U('admin_lock_account_button') or 'Lock Account'),

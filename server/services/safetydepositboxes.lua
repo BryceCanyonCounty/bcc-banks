@@ -182,6 +182,18 @@ BccUtils.RPC:Register('Feather:Banks:CreateSDB', function(params, cb, src)
 
     -- success (client will show its own toast)
     ReleasePlayerFinancialLock(src)
+    local lines = {
+        '**Action:** `Safety Deposit Box Created`',
+        '**SDB ID:** `' .. tostring(box.id) .. '`',
+        '**Name:** `' .. tostring(name) .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(bank)) .. '`',
+        '**Size:** `' .. tostring(sizeKey) .. '`',
+        '**Paid With:** `' .. tostring(payWith) .. '`',
+        '**Price:** `' .. tostring(price) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Safety Deposit Box Created', lines, 5763719)
+    AddCharacterTransaction(characterId, price, 'sdb - created', 'Created SDB #' .. tostring(box.id) .. ' at ' .. tostring(BccBanksInternal.getBankName(bank)) .. ' paid with ' .. tostring(payWith))
     cb(true, box)
 end)
 
@@ -235,6 +247,37 @@ local function ensureSDBInventoryRegistered(boxId, inventoryId, displayName, siz
     end
 
     return invId, invName, sizeCfg
+end
+
+local function countInventoryRows(rows)
+    if type(rows) ~= 'table' then return 0 end
+    local count = 0
+    for _ in pairs(rows) do
+        count = count + 1
+    end
+    return count
+end
+
+local function getSDBInventoryContentCounts(sdbId, inventoryId, displayName, sizeKey)
+    local invId = ensureSDBInventoryRegistered(sdbId, inventoryId, displayName, sizeKey)
+    local itemCount = 0
+    local weaponCount = 0
+
+    local itemsOk, items = pcall(function()
+        return exports.vorp_inventory:getCustomInventoryItems(invId)
+    end)
+    if itemsOk then
+        itemCount = countInventoryRows(items)
+    end
+
+    local weaponsOk, weapons = pcall(function()
+        return exports.vorp_inventory:getCustomInventoryWeapons(invId)
+    end)
+    if weaponsOk then
+        weaponCount = countInventoryRows(weapons)
+    end
+
+    return invId, itemCount, weaponCount
 end
 
 BccUtils.RPC:Register('Feather:Banks:OpenSDB', function(params, cb, src)
@@ -344,6 +387,133 @@ BccUtils.RPC:Register('Feather:Banks:Admin:OpenSDB', function(params, cb, src)
     cb(true)
 end)
 
+BccUtils.RPC:Register('Feather:Banks:GetSDBDeleteInfo', function(params, cb, src)
+    local user = VORPcore.getUser(src)
+    if not user then
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char then
+        cb(false)
+        return
+    end
+
+    local characterId = char.charIdentifier
+    local sdbId = NormalizeId(params and params.sdb_id)
+    if not characterId or not sdbId then
+        cb(false)
+        return
+    end
+
+    local row = MySQL.single.await(
+        'SELECT `id`,`name`,`bank_id`,`size`,`inventory_id` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
+        { sdbId }
+    )
+    if not row then
+        cb(false)
+        return
+    end
+
+    if not (IsSDBOwner(sdbId, characterId) or IsSDBAdmin(sdbId, characterId)) then
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, row.bank_id) then
+        cb(false)
+        return
+    end
+
+    local invId, itemCount, weaponCount = getSDBInventoryContentCounts(sdbId, row.inventory_id, row.name, row.size)
+    cb(true, {
+        inventory_id = invId,
+        item_count = itemCount,
+        weapon_count = weaponCount,
+        hasItems = (itemCount + weaponCount) > 0
+    })
+end)
+
+BccUtils.RPC:Register('Feather:Banks:DeleteSDB', function(params, cb, src)
+    local user = VORPcore.getUser(src)
+    if not user then
+        NotifyClient(src, _U('error_invalid_data'), 'error', 4000)
+        cb(false)
+        return
+    end
+    local char = user.getUsedCharacter
+    if not char then
+        NotifyClient(src, _U('error_invalid_data'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local characterId = char.charIdentifier
+    local sdbId = NormalizeId(params and params.sdb_id)
+    if not characterId or not sdbId then
+        NotifyClient(src, _U('error_invalid_data'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local row = MySQL.single.await(
+        'SELECT `id`,`name`,`bank_id`,`size`,`inventory_id` FROM `bcc_safety_deposit_boxes` WHERE `id`=? LIMIT 1;',
+        { sdbId }
+    )
+    if not row then
+        NotifyClient(src, _U('error_sdb_not_found'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    if not (IsSDBOwner(sdbId, characterId) or IsSDBAdmin(sdbId, characterId)) then
+        NotifyClient(src, _U('error_no_permission'), 'error', 4000)
+        cb(false)
+        return
+    end
+    if not IsPlayerNearBank(src, row.bank_id) then
+        NotifyClient(src, _U('error_not_at_bank'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local invId = row.inventory_id
+    if not invId or invId == '' then
+        invId = 'sdb_' .. tostring(sdbId)
+    end
+    invId = getSDBInventoryContentCounts(sdbId, invId, row.name, row.size)
+
+    pcall(function()
+        exports.vorp_inventory:closeInventory(src, invId)
+    end)
+    pcall(function()
+        exports.vorp_inventory:deleteCustomInventory(invId)
+    end)
+    pcall(function()
+        exports.vorp_inventory:removeInventory(invId)
+    end)
+
+    MySQL.query.await('DELETE FROM `bcc_safety_deposit_boxes_access` WHERE `safety_deposit_box_id`=?', { sdbId })
+    local affected = MySQL.update.await('DELETE FROM `bcc_safety_deposit_boxes` WHERE `id`=?', { sdbId })
+    if not affected or affected < 1 then
+        NotifyClient(src, _U('failed_delete_sdb'), 'error', 4000)
+        cb(false)
+        return
+    end
+
+    local lines = {
+        '**Action:** `Safety Deposit Box Deleted`',
+        '**SDB ID:** `' .. tostring(sdbId) .. '`',
+        '**SDB Name:** `' .. tostring(row.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(row.bank_id)) .. '`',
+        '**Inventory ID:** `' .. tostring(invId) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Safety Deposit Box Deleted', lines, 15158332)
+    AddCharacterTransaction(characterId, 0, 'sdb - deleted', 'Deleted SDB #' .. tostring(sdbId) .. ' at ' .. tostring(BccBanksInternal.getBankName(row.bank_id)))
+    NotifyClient(src, _U('sdb_deleted_notify'), 'success', 4000)
+    cb(true)
+end)
+
 BccUtils.RPC:Register('Feather:Banks:GetSDBAccessList', function(params, cb, src)
     local sdbId = NormalizeId(params and params.sdb_id)
     if not sdbId then
@@ -414,28 +584,40 @@ BccUtils.RPC:Register('Feather:Banks:AddSDBAccess', function(params, cb, src)
         requesterId = ch.charIdentifier
     end
     local sdbId     = NormalizeId(params and params.sdb_id)
+    local otherCharId = tonumber(params and params.character) or tonumber(params and params.user_src)
     local firstName = tostring((params and params.first_name) or ''):match('^%s*(.-)%s*$')
     local lastName  = tostring((params and params.last_name)  or ''):match('^%s*(.-)%s*$')
     local level     = tonumber(params and params.level)
 
-    devPrint("AddSDBAccess: sdbId:", sdbId, "name:", firstName, lastName, "level:", level, "requesterId:", requesterId)
+    devPrint("AddSDBAccess: sdbId:", sdbId, "target:", otherCharId, "name:", firstName, lastName, "level:", level, "requesterId:", requesterId)
 
-    if not requesterId or not sdbId or firstName == '' or lastName == '' or not IsValidAccessLevel(level) then
+    if not requesterId or not sdbId or not IsValidAccessLevel(level)
+        or (not otherCharId and (firstName == '' or lastName == '')) then
         devPrint("AddSDBAccess: Invalid input data.")
         NotifyClient(src, _U('error_invalid_data_provided'), "error", 4000)
         cb(false)
         return
     end
 
-    -- Resolve name to character ID
-    local otherCharId = GetCharacterByName(firstName, lastName)
+    -- Resolve name to character ID when an old-style character ID was not provided.
     if not otherCharId then
-        devPrint("AddSDBAccess: character not found for name:", firstName, lastName)
-        NotifyClient(src, _U('error_target_character_not_found'), 'error', 4000)
-        cb(false)
-        return
+        otherCharId = GetCharacterByName(firstName, lastName)
+        if not otherCharId then
+            devPrint("AddSDBAccess: character not found for name:", firstName, lastName)
+            NotifyClient(src, _U('error_target_character_not_found'), 'error', 4000)
+            cb(false)
+            return
+        end
+        otherCharId = tonumber(otherCharId)
+    else
+        local exists = MySQL.query.await("SELECT 1 FROM characters WHERE charidentifier = ? LIMIT 1", { otherCharId })
+        if not exists or not exists[1] then
+            devPrint("AddSDBAccess: Target character not found in DB ->", otherCharId)
+            NotifyClient(src, _U('error_target_character_not_found'), "error", 4000)
+            cb(false)
+            return
+        end
     end
-    otherCharId = tonumber(otherCharId)
 
     -- Permission check
     if not (IsSDBAdmin(sdbId, requesterId) or IsSDBOwner(sdbId, requesterId)) then
@@ -478,6 +660,19 @@ BccUtils.RPC:Register('Feather:Banks:AddSDBAccess', function(params, cb, src)
     ]], { sdbId, otherCharId, level })
 
     devPrint("AddSDBAccess: Access granted. sdbId=", sdbId, "charId=", otherCharId, "level=", level)
+    AddCharacterTransaction(requesterId, 0, 'sdb access - granted', 'Granted SDB #' .. tostring(sdbId) .. ' access to character #' .. tostring(otherCharId) .. ' level ' .. tostring(level))
+    local sdbRow = BccBanksInternal.getSDBSummary(sdbId)
+    local lines = {
+        '**Action:** `Safety Deposit Box Access Granted`',
+        '**SDB ID:** `' .. tostring(sdbId) .. '`',
+        '**SDB Name:** `' .. tostring(sdbRow and sdbRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(sdbRow and sdbRow.bank_id)) .. '`',
+        '**Target Character:** `' .. tostring(BccBanksInternal.getCharacterNameById(otherCharId)) .. '`',
+        '**Target Char ID:** `' .. tostring(otherCharId) .. '`',
+        '**Access Level:** `' .. tostring(level) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Safety Deposit Box Access Granted', lines, 5763719)
     NotifyClient(src, _U('success_access_granted'), "success", 4000)
     cb(true)
 end)
@@ -530,5 +725,17 @@ BccUtils.RPC:Register('Feather:Banks:RemoveSDBAccess', function(params, cb, src)
     end
 
     NotifyClient(src, _U('success_access_removed'), "success", 4000)
+    AddCharacterTransaction(requesterId, 0, 'sdb access - removed', 'Removed SDB #' .. tostring(sdbId) .. ' access from character #' .. tostring(targetCharId))
+    local sdbRow = BccBanksInternal.getSDBSummary(sdbId)
+    local lines = {
+        '**Action:** `Safety Deposit Box Access Removed`',
+        '**SDB ID:** `' .. tostring(sdbId) .. '`',
+        '**SDB Name:** `' .. tostring(sdbRow and sdbRow.name or 'Unknown') .. '`',
+        '**Bank:** `' .. tostring(BccBanksInternal.getBankName(sdbRow and sdbRow.bank_id)) .. '`',
+        '**Target Character:** `' .. tostring(BccBanksInternal.getCharacterNameById(targetCharId)) .. '`',
+        '**Target Char ID:** `' .. tostring(targetCharId) .. '`',
+    }
+    BccBanksInternal.appendActorLines(lines, src)
+    SendBankDiscordLog('Safety Deposit Box Access Removed', lines, 15158332)
     cb(true)
 end)

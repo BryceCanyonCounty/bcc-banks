@@ -1,5 +1,11 @@
 Locales["pl_lang"] = {
     bank_label = "Bank",
+    door_prompt_group = "Drzwi",
+    door_open_prompt = "Otworz drzwi",
+    door_lockpick_prompt = "Otworz wytrychem",
+    door_lock_prompt = "Zamknij drzwi",
+    door_unlocked = "Drzwi otwarte",
+    door_locked = "Drzwi zamkniete",
     -- Closed prompt wording (match stables/guarma style)
     hours = " jest otwarty od ~o~",
     to = ":00~q~ do ~o~",
@@ -109,6 +115,7 @@ Locales["pl_lang"] = {
     sdb_box_subheader = "Twoja skrytka w tym banku",
     open_box_button = "Otwórz skrytkę",
     manage_access_button = "Zarządzaj dostępem",
+    delete_sdb_button = "Usuń skrytkę",
 
     -- OpenCreateSDBPage
     create_sdb_header = "Utwórz skrytkę depozytową",
@@ -135,6 +142,8 @@ Locales["pl_lang"] = {
 
     -- OpenSDBGiveAccessPage
     grant_sdb_access_header = "Przyznaj dostęp do skrytki",
+    grant_sdb_access_help_identity = "Użyj ID postaci albo imienia + nazwiska.",
+    grant_sdb_access_help_levels = "Poziomy: 1 Admin, 2 Weź/Dodaj, 3 Dodaj, 4 Zobacz.",
     invalid_char_id_level = "Wprowadź poprawne ID postaci i poziom dostępu.",
     failed_grant_access = "Nie udało się przyznać dostępu.",
     access_granted = "Dostęp przyznany.",
@@ -149,6 +158,12 @@ Locales["pl_lang"] = {
     cancel_button = "Anuluj",
     access_removed = "Dostęp odebrany.",
     failed_remove_access = "Nie udało się odebrać dostępu.",
+    confirm_delete_sdb_header = "Usuń skrytkę",
+    confirm_delete_sdb_text = "Usunąć %s i jej ekwipunek? Tego nie można cofnąć.",
+    confirm_delete_sdb_text_with_items = "%s ma przedmioty w środku. Czy na pewno usunąć ją i jej ekwipunek? Tego nie można cofnąć.",
+    confirm_delete_sdb_button = "Tak, usuń skrytkę",
+    sdb_deleted_notify = "Skrytka usunięta.",
+    failed_delete_sdb = "Nie udało się usunąć skrytki.",
 
     -- OpenAccountDetails
     load_account_error = "Nie udało się załadować konta.",
@@ -495,8 +510,8 @@ Locales["pl_lang"] = {
     admin_bank_name_label = "Nazwa banku",
     admin_bank_name_placeholder = "Wprowadź nazwę banku",
     sdb_select_payment = "Wybierz płatność:",
-    sdb_pay_cash = "Zapłać gotówką",
-    sdb_pay_gold = "Zapłać złotem",
+    sdb_pay_cash = "Gotówka",
+    sdb_pay_gold = "Złoto",
     sdb_payment_cash_selected = "Wybrano płatność gotówką",
     sdb_payment_gold_selected = "Wybrano płatność złotem",
     menu_prompt = "Menu",
